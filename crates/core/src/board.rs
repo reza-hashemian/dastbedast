@@ -449,6 +449,7 @@ impl Core {
                     "state": if it.kind == "text" || here { "here" } else if busy(rt, &it.id) { "fetching" } else { "away" },
                     "own": e.local.as_ref().is_some_and(|l| l.own),
                     "kept": e.local.as_ref().is_some_and(|l| l.kept),
+                    "path": e.local.as_ref().map(|l| l.path.clone()),
                     "sources": sources,
                 })
             })

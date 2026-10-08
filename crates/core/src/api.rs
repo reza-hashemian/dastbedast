@@ -2,7 +2,7 @@
 //! The Tauri shell and the headless daemon both forward to [`Core::call`].
 
 use std::{
-    path::Path,
+    path::{Path, PathBuf},
     time::{Duration, Instant},
 };
 
@@ -180,6 +180,10 @@ impl Core {
                 let (inbox, keep, board) = (dir("inbox_dir"), dir("keep_dir"), dir("board_dir"));
                 for dir in [inbox, keep, board].into_iter().flatten() {
                     std::fs::create_dir_all(dir).map_err(|e| anyhow!(tr!("این پوشه ساخته نشد: {}", "Could not create this folder: {}", e)))?;
+                    // A folder can exist and still refuse this app, as most of a phone's storage does without permission.
+                    let probe = Path::new(dir).join(format!(".dbd-{}", crate::new_id()));
+                    std::fs::write(&probe, b"").map_err(|_| anyhow!(tr!("برنامه اجازهٔ نوشتن در این پوشه را ندارد: {}", "The app is not allowed to write in this folder: {}", dir)))?;
+                    let _ = std::fs::remove_file(&probe);
                 }
                 self.edit(|c| {
                     if let Some(d) = inbox {
@@ -206,6 +210,35 @@ impl Core {
                 let on = flag(&args, "on");
                 self.edit(|c| c.always_on = on);
                 self.board_auto();
+            }
+
+            // ---- choosing a folder from inside the UI, where the system has no folder picker to offer
+            "list_dir" => {
+                let asked = args.get("path").and_then(Value::as_str).unwrap_or_default().trim();
+                let mut dir = if asked.is_empty() { browse_root() } else { PathBuf::from(asked) };
+                while !dir.is_dir() {
+                    match dir.parent() {
+                        Some(p) => dir = p.to_path_buf(),
+                        None => {
+                            dir = browse_root();
+                            break;
+                        }
+                    }
+                }
+                let mut dirs: Vec<String> = std::fs::read_dir(&dir)
+                    .map(|rd| rd.flatten().filter(|e| e.path().is_dir()).map(|e| e.file_name().to_string_lossy().into_owned()).filter(|n| !n.starts_with('.')).collect())
+                    .unwrap_or_default();
+                dirs.sort_by_key(|n| n.to_lowercase());
+                return Ok(json!({ "path": dir, "parent": dir.parent(), "dirs": dirs }));
+            }
+            "make_dir" => {
+                let name = text(&args, "name")?.trim().to_string();
+                if name.is_empty() || name.contains(['/', '\\']) || name == "." || name == ".." {
+                    bail!(tr!("اسم پوشه نامعتبر است", "Not a valid folder name"));
+                }
+                let dir = PathBuf::from(text(&args, "path")?).join(name);
+                std::fs::create_dir(&dir).map_err(|e| anyhow!(tr!("این پوشه ساخته نشد: {}", "Could not create this folder: {}", e)))?;
+                return Ok(json!({ "path": dir }));
             }
 
             // ---- networks
@@ -352,6 +385,15 @@ impl Core {
             other => bail!("unknown command `{other}`"),
         }
         Ok(Value::Null)
+    }
+}
+
+/// Where browsing for a folder starts.
+fn browse_root() -> PathBuf {
+    if cfg!(target_os = "android") {
+        PathBuf::from("/storage/emulated/0")
+    } else {
+        dirs::home_dir().unwrap_or_else(|| PathBuf::from("/"))
     }
 }
 

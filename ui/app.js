@@ -5,6 +5,8 @@
   // Inside the desktop app commands go through Tauri; in a browser they go to the local daemon.
   var T = window.__TAURI__;
   var TOKEN = location.hash.slice(1);
+  // On Android the shell also offers a few things only the system can do: opening a file, asking for storage access.
+  var A = window.DbdAndroid;
 
   function call(cmd, args) {
     args = args || {};
@@ -179,6 +181,17 @@
       'Everything put on the shared board is also stored here automatically, so the others can get it from here while its owner is off.'],
     cur_addr: ['آدرس فعلی:', 'Current address:'],
     no_core: ['به هستهٔ برنامه وصل نشد: {0}', 'Could not reach the app core: {0}'],
+    choose: ['انتخاب', 'Choose'],
+    dir_title: ['انتخاب پوشه', 'Choose a folder'],
+    dir_ok: ['همین پوشه', 'Use this folder'],
+    dir_up: ['پوشهٔ بالاتر', 'Up one level'],
+    dir_empty: ['پوشه‌ای داخل این پوشه نیست.', 'No folders in here.'],
+    dir_new: ['پوشهٔ جدید', 'New folder'],
+    dir_new_ph: ['اسم پوشهٔ جدید', 'Name of the new folder'],
+    all_files_hint: ['برای دیدن و انتخاب هر پوشه‌ای از حافظهٔ گوشی، برنامه به «دسترسی به همهٔ فایل‌ها» نیاز دارد. بدون آن فقط پوشهٔ Download در دسترس است.',
+      'To see and choose any folder on the phone, the app needs “All files access”. Without it only the Download folder is available.'],
+    all_files_btn: ['دادن دسترسی', 'Grant access'],
+    cant_open: ['برنامه‌ای برای باز کردن این پیدا نشد: {0}', 'No app could open this: {0}'],
     ev_received: ['«{0}» از {1} رسید', '“{0}” arrived from {1}'],
     ev_incoming: ['{0} می‌خواهد فایل بفرستد', '{0} wants to send files']
   };
@@ -319,7 +332,10 @@
         : '<button type="button" class="btn" data-act="board-open" data-id="' + id + '">' + esc(t('open')) + '</button>' +
           (b.own || b.kept ? '<button type="button" class="btn" data-act="board-open" data-folder="1" data-id="' + id + '">' + esc(t('show_folder')) + '</button>'
             : '<button type="button" class="btn go" data-act="board-keep" data-id="' + id + '">' + esc(t('keep')) + '</button>');
-      return '<div class="row"><span class="nm">' + esc(b.name) + '</span><span class="meta">' + dots([size(b.size), b.files > 1 && esc(t('n_files', num(b.files)))].concat(who, esc(status))) + '</span><span class="act">' + act + off + '</span></div>';
+      var real = b.state === 'here' && !/^dbd-file:/.test(b.path || '');
+      var nm = real ? '<button type="button" class="nm open" data-act="board-open" data-id="' + id + '">' + esc(b.name) + '</button>' : '<span class="nm">' + esc(b.name) + '</span>';
+      if (b.state === 'here' && !real) act = '';
+      return '<div class="row">' + nm + '<span class="meta">' + dots([size(b.size), b.files > 1 && esc(t('n_files', num(b.files)))].concat(who, esc(status))) + '</span><span class="act">' + act + off + '</span></div>';
     }).join('') : '<p class="hint">' + esc(t('board_empty')) + '</p>';
   }
 
@@ -378,8 +394,9 @@
       var meta = i.missing ? esc(t('missing')) : dots([size(i.size), i.files > 1 && esc(t('n_files', num(i.files))), esc(t('from', i.from)), esc(kept ? t('kept') : ago(i.at))]);
       var act = i.missing ? btn('', 'inbox-del', id, 'unlist')
         : kept ? btn('', 'inbox-open', id, 'show_folder', ' data-folder="1"') + btn('', 'inbox-del', id, 'unlist')
-        : btn(' go', 'inbox-keep', id, 'keep') + btn('', 'inbox-open', id, 'open') + btn(' del', 'inbox-del', id, 'del', ' data-confirm="1"');
-      return '<div class="row"><span class="nm">' + esc(i.name) + '</span><span class="meta">' + meta + '</span><span class="act">' + act + '</span></div>';
+        : btn(' go', 'inbox-keep', id, 'keep') + btn('', 'inbox-open', id, 'open') + btn('', 'inbox-open', id, 'show_folder', ' data-folder="1"') + btn(' del', 'inbox-del', id, 'del', ' data-confirm="1"');
+      var nm = i.missing ? '<span class="nm">' + esc(i.name) + '</span>' : '<button type="button" class="nm open" data-act="inbox-open" data-id="' + id + '">' + esc(i.name) + '</button>';
+      return '<div class="row">' + nm + '<span class="meta">' + meta + '</span><span class="act">' + act + '</span></div>';
     }).join('') : '<p class="hint">' + esc(t('inbox_empty')) + '</p>';
   }
 
@@ -457,11 +474,15 @@
   function openSettings() {
     var s = S.settings;
     function field(label, id, value, cls, extra) { return '<label class="field">' + esc(t(label)) + '<input id="' + id + '"' + (cls ? ' class="' + cls + '"' : '') + (extra || '') + ' value="' + esc(value) + '"></label>'; }
+    function dir(label, id, value) {
+      return '<div class="field"><label for="' + id + '">' + esc(t(label)) + '</label><div class="line"><input id="' + id + '" class="ltr" value="' + esc(value) + '">' +
+        '<button type="button" class="btn" data-act="dir-pick" data-for="' + id + '">' + esc(t('choose')) + '</button></div></div>';
+    }
     $('settings-body').innerHTML = '<div class="dlg-head"><h2>' + esc(t('settings_title')) + '</h2>' + xBtn() + '</div>' +
       field('set_name', 'set-name', S.me.name) +
-      field('set_inbox', 'set-inbox', s.inbox_dir, 'ltr') +
-      field('set_keep', 'set-keep', s.keep_dir, 'ltr') +
-      field('set_board', 'set-board', s.board_dir, 'ltr') +
+      dir('set_inbox', 'set-inbox', s.inbox_dir) +
+      dir('set_keep', 'set-keep', s.keep_dir) +
+      dir('set_board', 'set-board', s.board_dir) +
       field('set_max', 'set-max', +(s.auto_max / 1073741824).toFixed(2), 'ltr', ' inputmode="decimal"') +
       field('set_port', 'set-port', S.me.config_port, 'ltr', ' inputmode="numeric"') +
       '<label class="check"><input type="checkbox" id="set-always"' + (s.always_on ? ' checked' : '') + '> ' + esc(t('set_always')) + '</label>' +
@@ -525,6 +546,44 @@
     });
   }
   $('dlg-paths').addEventListener('close', function () { if (pathsResolve) { pathsResolve([]); pathsResolve = null; } });
+  // ------------------------------------------------------------------ choosing a folder
+  // The desktop app asks the system. A phone and the browser have no folder picker, so the UI browses folders itself.
+  var dirResolve = null, dirState = null;
+  function pickDir(current) {
+    if (T && !A) return T.dialog.open({ directory: true, defaultPath: current || undefined }).then(function (r) { return r || null; });
+    return loadDir(current).then(function () {
+      return new Promise(function (resolve) { dirResolve = resolve; $('dlg-dir').showModal(); });
+    });
+  }
+  function loadDir(path) { return call('list_dir', { path: path || '' }).then(function (d) { dirState = d; renderDir(); }); }
+  function joinPath(dir, name) {
+    var sep = dir.indexOf('\\') >= 0 && dir.indexOf('/') < 0 ? '\\' : '/';
+    return dir.replace(/[\/\\]$/, '') + sep + name;
+  }
+  var FOLDER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3 7a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></svg>';
+  function renderDir() {
+    var d = dirState;
+    function row(label, path, up) { return '<button type="button" class="dir' + (up ? ' up' : '') + '" data-act="dir-go" data-path="' + esc(path) + '">' + FOLDER + '<bdi>' + esc(label) + '</bdi></button>'; }
+    $('dir-body').innerHTML = '<div class="dlg-head"><h2>' + esc(t('dir_title')) + '</h2>' + xBtn() + '</div>' +
+      '<p class="hint">' + ltr(d.path) + '</p>' +
+      (A && !A.allFiles() ? '<div class="ask"><span>' + esc(t('all_files_hint')) + '</span><span class="acts"><button type="button" class="btn go" data-act="all-files">' + esc(t('all_files_btn')) + '</button></span></div>' : '') +
+      '<div class="dirs">' + (d.parent ? row(t('dir_up'), d.parent, true) : '') +
+      (d.dirs.length ? d.dirs.map(function (n) { return row(n, joinPath(d.path, n)); }).join('') : '<p class="hint">' + esc(t('dir_empty')) + '</p>') + '</div>' +
+      '<div class="line"><input id="dir-new" placeholder="' + esc(t('dir_new_ph')) + '" aria-label="' + esc(t('dir_new_ph')) + '" autocomplete="off">' +
+      '<button type="button" class="btn" data-act="dir-new">' + esc(t('dir_new')) + '</button></div>' +
+      '<div class="line end"><button type="button" class="btn go big" data-act="dir-ok">' + esc(t('dir_ok')) + '</button></div>';
+  }
+  $('dlg-dir').addEventListener('close', function () { if (dirResolve) { dirResolve(null); dirResolve = null; } });
+  // Coming back from the system's permission screen, the folder list may have grown.
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && $('dlg-dir').open && dirState) run(loadDir(dirState.path)); });
+
+  // Opens a received file, or the folder it is in.
+  function openItem(cmd, d, path) {
+    if (!A) return call(cmd, { id: d.id, folder: !!d.folder });
+    var target = d.folder ? String(path || '').replace(/\/[^\/]*$/, '') : path;
+    if (!target || !A.open(target, !!d.folder)) toast(t('cant_open', target || ''), 'err');
+  }
+
   function send(peer, folder) {
     return pick(folder).then(function (paths) { if (paths.length) return call('send', { peer: peer, paths: paths }); });
   }
@@ -553,7 +612,7 @@
     'clear-transfers': function () { return call('clear_transfers'); },
     'offer': function (d) { return call('offer_decide', { id: d.id, ok: !!d.ok }); },
     'inbox-keep': function (d) { return call('inbox_keep', { id: d.id }); },
-    'inbox-open': function (d) { return call('inbox_open', { id: d.id, folder: !!d.folder }); },
+    'inbox-open': function (d) { return openItem('inbox_open', d, (S.inbox.filter(function (i) { return i.id === d.id; })[0] || {}).path); },
     'inbox-del': function (d) { return call('inbox_delete', { id: d.id }); },
     'board-text': function () {
       var el = $('board-text'), text = el.value.trim();
@@ -564,10 +623,27 @@
     'board-folder': function () { return boardPut(true); },
     'board-get': function (d) { return call('board_get', { id: d.id }); },
     'board-keep': function (d) { return call('board_keep', { id: d.id }); },
-    'board-open': function (d) { return call('board_open', { id: d.id, folder: !!d.folder }); },
+    'board-open': function (d) { return openItem('board_open', d, boardItem(d.id).path); },
     'board-remove': function (d) { return call('board_remove', { id: d.id }); },
     'board-copy': function (d) { return copyText(boardItem(d.id).text || '').then(function () { toast(t('copied')); }); },
-    'board-link': function (d) { return call('open_url', { url: boardItem(d.id).text || '' }); },
+    'board-link': function (d) {
+      var url = boardItem(d.id).text || '';
+      if (A) { if (!A.openUrl(url)) toast(t('cant_open', url), 'err'); return; }
+      return call('open_url', { url: url });
+    },
+    'dir-pick': function (d) { return pickDir($(d.for).value.trim()).then(function (p) { if (p) $(d.for).value = p; }); },
+    'dir-go': function (d) { return loadDir(d.path); },
+    'dir-new': function () {
+      var name = $('dir-new').value.trim();
+      if (!name) { $('dir-new').focus(); return; }
+      return call('make_dir', { path: dirState.path, name: name }).then(function (r) { return loadDir(r.path); });
+    },
+    'dir-ok': function () {
+      var done = dirResolve, path = dirState.path; dirResolve = null;
+      $('dlg-dir').close();
+      if (done) done(path);
+    },
+    'all-files': function () { A.askAllFiles(); },
     'pair': function (d) { return call('pair_decide', { id: d.id, ok: !!d.ok }); },
     'pair-nearby': function (d) { return call('pair_nearby', { id: d.id }); },
     'pair-addr': function () {
