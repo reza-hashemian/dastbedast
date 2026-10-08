@@ -785,7 +785,12 @@ impl Core {
 
     pub async fn unpair(&self, pid: &str) {
         if let Ok(Ok(mut stream)) = timeout(Duration::from_secs(4), self.open_stream(pid)).await {
+            use tokio::io::{AsyncReadExt, AsyncWriteExt};
             let _ = write_msg(&mut stream, &Req::Unpair).await;
+            // Close politely and wait for the other side to hang up. Dropping the connection right
+            // after writing can reset it before the message has been read.
+            let _ = stream.shutdown().await;
+            let _ = timeout(Duration::from_secs(3), stream.read(&mut [0u8; 16])).await;
         }
         self.forget_peer(pid);
     }
