@@ -1,0 +1,7 @@
+{
+  "identifier": "desktop",
+  "description": "Desktop only: the window title follows the chosen language.",
+  "platforms": ["linux", "windows", "macOS"],
+  "windows": ["main"],
+  "permissions": ["core:window:allow-set-title"]
+}

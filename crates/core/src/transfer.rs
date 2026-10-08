@@ -5,9 +5,9 @@
 //! behind and continues from their length on the next attempt.
 
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, LazyLock, Mutex},
     time::{Duration, Instant},
 };
 
@@ -35,6 +35,49 @@ struct OutFile {
     abs: PathBuf,
     rel: String,
     size: u64,
+    /// Set for a file the platform handed over already open, see [`adopt_file`].
+    handle: Option<Arc<std::fs::File>>,
+}
+
+const ADOPTED_PREFIX: &str = "dbd-file:";
+static ADOPTED: LazyLock<Mutex<HashMap<String, Arc<std::fs::File>>>> = LazyLock::new(Default::default);
+
+/// Makes an already open file usable wherever a path is expected, and returns the stand-in path.
+///
+/// On Android a file chosen by the user comes as an open handle, not as a path this process may open.
+/// The stand-in is valid until the app exits.
+pub fn adopt_file(file: std::fs::File, name: &str) -> String {
+    let name: String = name.chars().map(|c| if c == '/' || c == '\\' || c.is_control() { '_' } else { c }).collect();
+    let name = if name.trim().is_empty() { "file".to_string() } else { name };
+    let path = format!("{ADOPTED_PREFIX}{}/{name}", new_id());
+    ADOPTED.lock().unwrap().insert(path.clone(), Arc::new(file));
+    path
+}
+
+fn adopted(path: &str) -> Option<Arc<std::fs::File>> {
+    path.starts_with(ADOPTED_PREFIX).then(|| ADOPTED.lock().unwrap().get(path).cloned()).flatten()
+}
+
+/// Whether something that can be sent is still behind `path`.
+pub(crate) fn source_exists(path: &str) -> bool {
+    adopted(path).is_some() || Path::new(path).exists()
+}
+
+/// Opens a file for one pass of reading from its start.
+async fn open_source(f: &OutFile) -> std::io::Result<File> {
+    let Some(handle) = &f.handle else { return File::open(&f.abs).await };
+    // Through /proc the file is opened afresh, so two transfers of the same file do not share a read position.
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    {
+        use std::os::fd::AsRawFd;
+        if let Ok(file) = File::open(format!("/proc/self/fd/{}", handle.as_raw_fd())).await {
+            return Ok(file);
+        }
+    }
+    use std::io::Seek;
+    let mut dup = handle.try_clone()?;
+    dup.seek(std::io::SeekFrom::Start(0))?;
+    Ok(File::from_std(dup))
 }
 
 enum SendErr {
@@ -66,7 +109,7 @@ fn collect(paths: Vec<String>) -> Result<Vec<OutFile>> {
             if meta.is_dir() {
                 walk(&e.path(), &rel, out);
             } else if meta.is_file() {
-                out.push(OutFile { abs: e.path(), rel, size: meta.len() });
+                out.push(OutFile { abs: e.path(), rel, size: meta.len(), handle: None });
             }
         }
     }
@@ -74,7 +117,12 @@ fn collect(paths: Vec<String>) -> Result<Vec<OutFile>> {
     let mut tops = HashSet::new();
     for p in paths {
         let path = PathBuf::from(&p);
-        let meta = std::fs::metadata(&path).map_err(|_| anyhow!(tr!("پیدا نشد: {}", "Not found: {}", p)))?;
+        let handle = adopted(&p);
+        let meta = match &handle {
+            Some(h) => h.metadata(),
+            None => std::fs::metadata(&path),
+        }
+        .map_err(|_| anyhow!(tr!("پیدا نشد: {}", "Not found: {}", p)))?;
         let base = path.file_name().map(|n| n.to_string_lossy().into_owned()).ok_or_else(|| anyhow!(tr!("مسیر نامعتبر: {}", "Not a valid path: {}", p)))?;
         let mut top = base.clone();
         let mut n = 2;
@@ -82,10 +130,10 @@ fn collect(paths: Vec<String>) -> Result<Vec<OutFile>> {
             top = format!("{base} ({n})");
             n += 1;
         }
-        if meta.is_dir() {
+        if meta.is_dir() && handle.is_none() {
             walk(&path, &top, &mut out);
         } else {
-            out.push(OutFile { abs: path, rel: top, size: meta.len() });
+            out.push(OutFile { abs: path, rel: top, size: meta.len(), handle });
         }
     }
     Ok(out)
@@ -283,7 +331,7 @@ impl Core {
         let mut buf = vec![0u8; CHUNK];
         for (f, offset) in files.iter().zip(resume) {
             let offset = offset.min(f.size);
-            let mut file = File::open(&f.abs).await.map_err(|e| SendErr::Fatal(format!("{}: {e}", f.rel)))?;
+            let mut file = open_source(f).await.map_err(|e| SendErr::Fatal(format!("{}: {e}", f.rel)))?;
             let mut hasher = blake3::Hasher::new();
             // The receiver already has this part; it only goes through the hash.
             let mut left = offset;

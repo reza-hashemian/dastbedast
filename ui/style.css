@@ -151,3 +151,6 @@ textarea{resize:vertical;width:100%}
   .board .row{grid-template-columns:minmax(0,1fr)}
   .board .row .act{grid-row:auto;grid-column:1;justify-content:flex-start;margin-top:4px}
 }
+
+/* Android: no folder picker, and files are opened from the phone's own file manager */
+.phone [data-act="send-folder"],.phone [data-act="board-folder"],.phone [data-act="inbox-open"],.phone [data-act="board-open"],.phone [data-act="board-link"],.phone [data-act="guest-share"]{display:none}

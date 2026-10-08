@@ -173,6 +173,11 @@ pub fn device_kind() -> &'static str {
 }
 
 pub fn default_name() -> String {
+    // On a phone the model name is what the user recognises.
+    #[cfg(target_os = "android")]
+    if let Some(model) = std::process::Command::new("getprop").arg("ro.product.model").output().ok().map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string()).filter(|m| !m.is_empty()) {
+        return model;
+    }
     std::fs::read_to_string("/etc/hostname")
         .ok()
         .map(|s| s.trim().to_string())

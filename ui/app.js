@@ -472,6 +472,8 @@
   }
 
   function render() {
+    // A phone has no folder picker and nothing to "show in folder".
+    document.body.classList.toggle('phone', S.me.kind === 'android');
     var want = S.settings.lang === 'en' ? 'en' : 'fa';
     if (want !== lang || !langApplied) { lang = want; langApplied = true; applyLang(); }
     renderBar(); renderNets(); renderDevs(); renderBoard(); renderTransfers(); renderInbox(); renderPair(); renderNew(); renderPeer(false);
@@ -507,7 +509,12 @@
   var pathsResolve = null;
   function pick(folder) {
     if (T) {
-      return T.dialog.open({ multiple: !folder, directory: !!folder }).then(function (r) { return !r ? [] : Array.isArray(r) ? r : [r]; });
+      return T.dialog.open({ multiple: !folder, directory: !!folder }).then(function (r) {
+        var list = !r ? [] : Array.isArray(r) ? r : [r];
+        // Android gives addresses only the app itself can open; the shell turns them into something the core can read.
+        var foreign = list.some(function (p) { return /^content:/.test(p); });
+        return foreign ? T.core.invoke('adopt', { uris: list }) : list;
+      });
     }
     return new Promise(function (resolve) {
       pathsResolve = resolve;

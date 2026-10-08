@@ -207,3 +207,27 @@ async fn browser_guest() {
     b.call("guest_stop", json!({})).await;
     assert!(b.snap()["guest"].is_null());
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn file_handed_over_open() {
+    // What Android does: the picker gives an open file instead of a path.
+    let a = Device::start("alpha").await;
+    let b = Device::start("bravo").await;
+    pair(&a, &b).await;
+    b.call("set_accept", json!({ "mode": "auto" })).await;
+    let data = random(1_500_000);
+    let real = a.file("hidden-name-1234", &data);
+    let stand_in = dbd_core::adopt_file(std::fs::File::open(&real).unwrap(), "holiday.jpg");
+    std::fs::remove_file(&real).unwrap();
+
+    let id = a.call("send", json!({ "peer": b.core.id, "paths": [stand_in] })).await["id"].as_str().unwrap().to_string();
+    until("sent", || a.transfer_state(&id) == "done" && b.transfer_state(&id) == "done").await;
+    assert_eq!(std::fs::read(b.dir.join("inbox/holiday.jpg")).unwrap(), data);
+
+    // The same stand-in works on the shared board, twice over.
+    a.call("board_put", json!({ "paths": [stand_in] })).await;
+    until("listed", || b.board("holiday.jpg")["sources"] == json!(["alpha"])).await;
+    b.call("board_get", json!({ "id": b.board("holiday.jpg")["id"] })).await;
+    until("fetched", || b.board("holiday.jpg")["state"] == "here").await;
+    assert_eq!(std::fs::read(b.dir.join("board/holiday.jpg")).unwrap(), data);
+}

@@ -33,6 +33,7 @@ use tokio_util::sync::CancellationToken;
 
 use i18n::{remote, tr};
 use model::{Config, Network, Peer, PeerAddr};
+pub use transfer::adopt_file;
 use proto::{read_msg, write_msg, Info, LinkMsg, PairMsg, Req, Resp};
 
 pub type Stream = tokio_rustls::TlsStream<TcpStream>;
@@ -43,6 +44,8 @@ pub struct Options {
     pub port: Option<u16>,
     /// Announce this device on the local network and listen for others.
     pub discovery: bool,
+    /// Where received files go on a first start, for platforms without a usual home folder.
+    pub files_dir: Option<PathBuf>,
 }
 
 pub(crate) struct LinkHandle {
@@ -185,7 +188,13 @@ impl Core {
     pub async fn start(dir: PathBuf, opts: Options) -> Result<Core> {
         std::fs::create_dir_all(&dir).with_context(|| format!("create {}", dir.display()))?;
         let tls = tls::Tls::load_or_create(&dir)?;
+        let fresh = !dir.join("config.json").exists();
         let mut cfg = Config::load(&dir);
+        if let Some(base) = opts.files_dir.as_ref().filter(|_| fresh) {
+            cfg.inbox_dir = base.join("Inbox").to_string_lossy().into_owned();
+            cfg.keep_dir = base.join("Files").to_string_lossy().into_owned();
+            cfg.board_dir = base.join("Board").to_string_lossy().into_owned();
+        }
         if cfg.name.is_empty() {
             cfg.name = model::default_name();
         }

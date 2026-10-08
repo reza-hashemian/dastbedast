@@ -14,7 +14,7 @@ pub struct Device {
 impl Device {
     pub async fn start(tag: &str) -> Device {
         let dir = std::env::temp_dir().join(format!("dbd-test-{tag}-{:x}", rand::random::<u64>()));
-        let core = Core::start(dir.join("cfg"), Options { port: Some(0), discovery: false }).await.unwrap();
+        let core = Core::start(dir.join("cfg"), Options { port: Some(0), discovery: false, ..Default::default() }).await.unwrap();
         let args = json!({ "inbox_dir": dir.join("inbox"), "keep_dir": dir.join("keep"), "board_dir": dir.join("board") });
         core.call("set_dirs", args).await.unwrap();
         core.call("set_name", json!({ "name": tag })).await.unwrap();

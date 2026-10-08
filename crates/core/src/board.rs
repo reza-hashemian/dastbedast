@@ -21,7 +21,7 @@ use crate::{
     model::{BoardEntry, BoardItem, BoardLocal, Config},
     new_id, now,
     proto::{read_msg, write_msg, LinkMsg, Req, Resp},
-    transfer::{clean_rel, collect_sizes, move_path},
+    transfer::{clean_rel, collect_sizes, move_path, source_exists},
     unique_path, Core, Runtime, Stream,
 };
 
@@ -50,7 +50,7 @@ fn valid(it: &BoardItem) -> bool {
 
 /// This device can hand out the item's content.
 fn has_content(e: &BoardEntry) -> bool {
-    e.item.gone == 0 && e.item.kind == "file" && e.local.as_ref().is_some_and(|l| Path::new(&l.path).exists())
+    e.item.gone == 0 && e.item.kind == "file" && e.local.as_ref().is_some_and(|l| source_exists(&l.path))
 }
 
 /// Takes an item off the board. A copy this device fetched goes with it; the user's own files stay.
@@ -186,7 +186,8 @@ impl Core {
                 bail!(tr!("میز مشترک پر است؛ اول چند مورد را بردار", "The shared board is full; take some items off first"));
             }
             for e in entries {
-                let same = |x: &BoardEntry| x.item.gone == 0 && x.local.as_ref().is_some_and(|l| l.own && Some(&l.path) == e.local.as_ref().map(|l| &l.path));
+                // Compared as paths, so that `a\\b` and `a/b` on Windows are the same file.
+                let same = |x: &BoardEntry| x.item.gone == 0 && x.local.as_ref().is_some_and(|l| l.own && Some(Path::new(&l.path)) == e.local.as_ref().map(|l| Path::new(&l.path)));
                 if e.local.is_none() || !cfg.board.iter().any(same) {
                     cfg.board.push(e);
                 }

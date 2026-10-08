@@ -95,3 +95,76 @@ jobs:
       - name: Keep the log of a failed run
         if: failure()
         run: bash .github/keep-log.sh "desktop-${{ runner.os }}" "${{ github.token }}"
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: app
+      - uses: cargo-bins/cargo-binstall@main
+      - name: Tauri CLI
+        run: |
+          set -o pipefail
+          cargo binstall -y --locked "tauri-cli@^2" 2>&1 | tee "$RUNNER_TEMP/ci.log"
+      - name: Android project
+        working-directory: app
+        run: |
+          set -o pipefail
+          export NDK_HOME="$ANDROID_NDK_LATEST_HOME"
+          cargo tauri android init --ci 2>&1 | tee -a "$RUNNER_TEMP/ci.log"
+      - name: Android app
+        working-directory: app
+        run: |
+          set -o pipefail
+          export NDK_HOME="$ANDROID_NDK_LATEST_HOME"
+          cargo tauri android build --apk --target aarch64 armv7 2>&1 | tee -a "$RUNNER_TEMP/ci.log"
+      - name: Sign
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          set -o pipefail
+          {
+            apk=$(find app/gen/android/app/build/outputs/apk -name "*release*.apk" | head -n 1)
+            tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
+            if [ -n "$KEYSTORE_B64" ]; then
+              echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/key.jks"
+              pass="$KEYSTORE_PASSWORD"
+            else
+              # Without the project's own key the APK gets a throwaway one: it installs,
+              # but a later build cannot update it without uninstalling first.
+              echo "::warning::ANDROID_KEYSTORE_B64 is not set; signing with a throwaway key"
+              pass=throwaway
+              keytool -genkeypair -keystore "$RUNNER_TEMP/key.jks" -storepass "$pass" -keypass "$pass" -alias dastbedast \
+                -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=DastBeDast test build"
+            fi
+            version=$(grep -m1 '"version"' app/tauri.conf.json | sed 's/[^0-9.]//g')
+            mkdir out
+            "$tools/zipalign" -f -p 4 "$apk" "$RUNNER_TEMP/aligned.apk"
+            "$tools/apksigner" sign --ks "$RUNNER_TEMP/key.jks" --ks-pass "pass:$pass" --ks-key-alias dastbedast \
+              --out "out/DastBeDast_${version}_android.apk" "$RUNNER_TEMP/aligned.apk"
+            rm -f out/*.idsig
+            ls -la out
+          } 2>&1 | tee -a "$RUNNER_TEMP/ci.log"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dastbedast-Android
+          path: out/*
+          if-no-files-found: error
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*
+      - name: Keep the log of a failed run
+        if: failure()
+        run: bash .github/keep-log.sh "android" "${{ github.token }}"

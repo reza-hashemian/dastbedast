@@ -102,7 +102,7 @@ async fn main() -> Result<()> {
     let ui_port: u16 = arg("--ui-port").map(|p| p.parse()).transpose().context("--ui-port")?.unwrap_or(47810);
     let discovery = !std::env::args().any(|a| a == "--no-discovery");
 
-    let core = Core::start(dir.clone(), Options { port, discovery }).await?;
+    let core = Core::start(dir.clone(), Options { port, discovery, ..Default::default() }).await?;
     // The token keeps other local programs and web pages from driving this device.
     let token_path = dir.join("ui-token");
     let token = match std::fs::read_to_string(&token_path) {
