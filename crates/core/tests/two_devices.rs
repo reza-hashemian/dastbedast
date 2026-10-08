@@ -265,3 +265,56 @@ async fn file_handed_over_open() {
     until("fetched", || b.board("holiday.jpg")["state"] == "here").await;
     assert_eq!(std::fs::read(b.dir.join("board/holiday.jpg")).unwrap(), data);
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn phone_through_the_browser_link() {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    // alpha serves the phone; bravo is another device of the same person.
+    let a = Device::start("alpha").await;
+    let b = Device::start("bravo").await;
+    pair(&a, &b).await;
+    b.call("set_accept", json!({ "mode": "auto" })).await;
+    a.call("guest_start", json!({})).await;
+    let url = a.snap()["guest"]["url"].as_str().unwrap().to_string();
+    let (host, path) = url.strip_prefix("http://").unwrap().split_once('/').unwrap();
+    let port: u16 = host.rsplit_once(':').unwrap().1.parse().unwrap();
+    async fn http(port: u16, req: String, body: &[u8]) -> String {
+        let mut s = tokio::net::TcpStream::connect(("127.0.0.1", port)).await.unwrap();
+        s.write_all(req.as_bytes()).await.unwrap();
+        s.write_all(body).await.unwrap();
+        let mut out = vec![];
+        s.read_to_end(&mut out).await.unwrap();
+        String::from_utf8_lossy(&out).into_owned()
+    }
+    let get = |what: &str| format!("GET /{path}/{what} HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n");
+
+    // The phone sees the other device and sends it a file; alpha passes it on.
+    let state = http(port, get("state"), b"").await;
+    assert!(state.contains("\"name\":\"bravo\"") && state.contains("\"online\":true"), "{state}");
+    let data = random(900_000);
+    let put = format!("PUT /{path}/to/{}/clip.mov HTTP/1.1\r\nHost: x\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", b.core.id, data.len());
+    assert!(http(port, put, &data).await.starts_with("HTTP/1.1 200"));
+    until("file passed on to bravo", || b.dir.join("inbox/clip.mov").exists() && !b.snap()["inbox"].as_array().unwrap().is_empty()).await;
+    assert_eq!(std::fs::read(b.dir.join("inbox/clip.mov")).unwrap(), data);
+    assert!(a.snap()["inbox"].as_array().unwrap().is_empty(), "a passed-on file does not stay with the device in between");
+    let state = http(port, get("state"), b"").await;
+    assert!(state.contains("\"state\":\"done\"") && state.contains("clip.mov"), "{state}");
+    // A device the phone's host is not paired with cannot be reached this way.
+    let put = format!("PUT /{path}/to/0000/x.bin HTTP/1.1\r\nHost: x\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+    assert!(http(port, put, b"").await.starts_with("HTTP/1.1 404"));
+
+    // What another device puts on the board is fetched by alpha by itself, so the phone can download it.
+    let photo = random(400_000);
+    b.call("board_put", json!({ "paths": [b.file("photo.png", &photo)] })).await;
+    until("alpha fetched it for the phone", || a.board("photo.png")["state"] == "here").await;
+    let id = a.board("photo.png")["id"].as_str().unwrap().to_string();
+    let resp = http(port, get(&format!("board/dl/{id}")), b"").await;
+    assert!(resp.starts_with("HTTP/1.1 200"));
+
+    // Files put on the phone's card wait for it, and can be taken back.
+    a.call("guest_share", json!({ "paths": [a.file("for-phone.pdf", b"pdf")] })).await;
+    assert!(http(port, get("state"), b"").await.contains("for-phone.pdf"));
+    a.call("guest_clear", json!({})).await;
+    assert!(!http(port, get("state"), b"").await.contains("for-phone.pdf"));
+    a.call("guest_stop", json!({})).await;
+}

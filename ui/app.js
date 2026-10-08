@@ -70,6 +70,10 @@
       ['Connect the iPhone to this same Wi-Fi network.', 'Scan this code with the iPhone camera; the page opens in Safari.', 'In Safari tap Share and choose “Add to Home Screen”.']],
     phone_note: ['تا وقتی این برنامه باز و این لینک روشن است کار می‌کند. اگر آی‌پی این دستگاه عوض شود، باید دوباره اسکن و نصب کنی.',
       'It works while this app is open and this link is on. If this device’s IP address changes, scan and add it again.'],
+    phone_card: ['آیفون / مرورگر', 'iPhone / browser'],
+    phone_via: ['از راه لینک', 'through the link'],
+    phone_out: ['{0} فایل گذاشته شده', '{0} file(s) put out'],
+    take_back: ['پس بگیر', 'Take back'],
     phone_reset: ['لینک جدید', 'New link'],
     phone_starting: ['در حال روشن‌کردن…', 'Turning on…'],
     paths_hint: ['در حالت مرورگر پنجرهٔ انتخاب فایل در دسترس نیست. مسیر کامل هر فایل یا پوشه را در یک خط بنویس.',
@@ -311,11 +315,20 @@
   }
 
   function renderDevs() {
-    if (!S.peers.length) {
+    // A phone that works through the browser link is shown like a device: files put on its card wait for it to download.
+    var g = S.me.kind !== 'android' && S.guest, phone = '';
+    if (g) {
+      phone = '<div class="dev" data-guest="1"><button type="button" class="dev-main" data-act="guest-share">' + ICON.phone +
+        '<b>' + esc(t('phone_card')) + '</b><span class="st"><span class="dot on"></span><span>' + esc(g.shared.length ? t('phone_out', num(g.shared.length)) : t('phone_via')) + '</span></span></button>' +
+        '<div class="dev-acts"><button type="button" data-act="guest-share">' + esc(t('file')) + '</button>' +
+        '<button type="button" data-act="guest-clear"' + (g.shared.length ? '' : ' disabled') + '>' + esc(t('take_back')) + '</button>' +
+        '<button type="button" class="more" data-act="phone" aria-label="' + esc(t('phone_title')) + '">⋯</button></div></div>';
+    }
+    if (!S.peers.length && !g) {
       $('devs').innerHTML = '<p class="empty" style="grid-column:1/-1">' + esc(t('devs_empty')) + '</p>';
       return;
     }
-    $('devs').innerHTML = S.peers.map(function (p) {
+    $('devs').innerHTML = phone + S.peers.map(function (p) {
       var st = p.online ? esc(t('connected')) + ' · ' + ltr((p.addr || '').replace(/:\d+$/, '')) : esc(t(p.here ? 'unreachable' : 'not_here'));
       var dis = p.online ? '' : ' disabled';
       var id = esc(p.id);
@@ -709,6 +722,7 @@
     },
     'phone': function () { $('dlg-phone').showModal(); renderPhone(); return call('guest_start'); },
     'guest-reset': function () { return call('guest_reset'); },
+    'guest-clear': function () { return call('guest_clear'); },
     'guest-start': function () { return call('guest_start'); },
     'guest-stop': function () { if ($('dlg-phone').open) $('dlg-phone').close(); return call('guest_stop'); },
     'guest-share': function () { return pick(false).then(function (p) { if (p.length) return call('guest_share', { paths: p }); }); },
@@ -775,6 +789,7 @@
       var el = document.elementFromPoint(pos.x / r, pos.y / r);
       var card = el && el.closest('[data-peer]');
       if (card) return run(call('send', { peer: card.dataset.peer, paths: p.paths }));
+      if (el && el.closest('[data-guest]')) return run(call('guest_share', { paths: p.paths }));
       if (el && el.closest('#board-box')) return run(call('board_put', { paths: p.paths }));
       toast(t('drop_hint'), 'err');
     });

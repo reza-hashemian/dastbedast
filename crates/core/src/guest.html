@@ -51,6 +51,18 @@ ul li>div{min-width:0;display:flex;flex-direction:column}
 .tip ol{margin:0;padding-inline-start:20px;font-size:.9rem}
 .x{align-self:flex-end;background:none;border:0;color:var(--accent);font-weight:700;font-size:.84rem;padding:4px 0}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.devs{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.dev{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:1px solid var(--line);border-radius:12px;background:var(--bg);padding:12px;text-align:start;line-height:1.5;min-height:92px;cursor:pointer}
+.dev:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.dev.off{opacity:.55;cursor:default}
+.dev svg{width:26px;height:26px;color:var(--accent)}
+.dev b{overflow-wrap:anywhere}
+.dev .s{display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.dot.on{background:var(--ok)}
+.prog{height:4px;border-radius:4px;background:var(--sunk);overflow:hidden;direction:ltr;margin-top:4px}
+.prog i{display:block;height:100%;background:var(--accent)}
+.grow{flex:1;min-width:0}
 </style>
 </head>
 <body>
@@ -67,24 +79,22 @@ ul li>div{min-width:0;display:flex;flex-direction:column}
   </section>
 
   <section>
-    <h2 id="t-send"></h2>
-    <div class="seg" role="group">
-      <button type="button" id="to-host" aria-pressed="true"></button>
-      <button type="button" id="to-board" aria-pressed="false"></button>
-    </div>
-    <label class="pick"><span id="t-pick"></span><input id="pick" type="file" multiple></label>
-    <ul id="ups"></ul>
+    <h2 id="t-devices"></h2>
+    <p id="t-devices-hint"></p>
+    <div class="devs" id="devs"></div>
+    <ul id="acts"></ul>
+  </section>
+
+  <section>
+    <h2 id="t-inbox"></h2>
+    <ul id="files"></ul>
   </section>
 
   <section>
     <h2 id="t-board"></h2>
     <div class="line"><input id="text" autocomplete="off"><button type="button" class="btn go" id="put"></button></div>
+    <label class="btn" style="justify-content:center;cursor:pointer"><span id="t-board-file"></span><input id="board-pick" type="file" multiple></label>
     <ul id="board"></ul>
-  </section>
-
-  <section id="for-you" hidden>
-    <h2 id="t-for-you"></h2>
-    <ul id="files"></ul>
   </section>
 </main>
 <span id="host" hidden>{{HOST}}</span>
@@ -95,25 +105,37 @@ function $(id){return document.getElementById(id)}
 var EN = document.documentElement.lang === 'en', HOST = $('host').textContent;
 document.documentElement.dir = EN ? 'ltr' : 'rtl';
 var TX = EN ? {
-  brand:'DastBeDast', intro:'Connected to “'+HOST+'”. This page works only on the same network.', send:'Send files', toHost:'To “'+HOST+'”', toBoard:'To the shared board', pick:'Choose files',
-  board:'Shared board', boardPh:'Text or a link for all devices…', put:'Put', boardNone:'The board is empty.', from:'from ', copy:'Copy', copied:'Copied', away:'not on “'+HOST+'” yet', nFiles:' files',
-  forYou:'Files put out for you', queued:'queued', ok:'sent', bad:'failed', lost:'connection lost', get:'Download', pct:'%', units:['B','KB','MB','GB'],
+  brand:'DastBeDast', intro:'Through “'+HOST+'”. Works while that device is on and you are on its network.',
+  devices:'Devices', devicesHint:'Tap a device to send it files.', connected:'connected', offline:'not reachable', thisHost:'this link’s device',
+  inbox:'Files for you', inboxNone:'Nothing yet. Files that are sent to this phone show up here.',
+  board:'Shared board', boardPh:'Text or a link for all devices…', put:'Put', boardFile:'Put a file on the board', boardNone:'The board is empty.', from:'from ', copy:'Copy', copied:'Copied', away:'being fetched…', nFiles:' files',
+  queued:'queued', uploading:'uploading ', ok:'sent', bad:'failed', lost:'connection lost', get:'Download', pct:'%', units:['B','KB','MB','GB'], to:' → ',
+  st:{connecting:'connecting…', asking:'waiting for it to accept…', active:'sending ', waiting:'interrupted; continues when it is back', done:'sent', rejected:'declined', cancelled:'cancelled', failed:'failed'},
   tipTitle:'Keep it on your home screen', tipIos:['Tap the Share button at the bottom of Safari.','Choose “Add to Home Screen”.','Open DastBeDast from the home screen from now on.'],
   tipOther:['Open the browser menu.','Choose “Add to Home screen” or “Install”.'], tipClose:'Not now'
 } : {
-  brand:'دست‌به‌دست', intro:'به «'+HOST+'» وصل هستی. این صفحه فقط روی همان شبکه کار می‌کند.', send:'فرستادن فایل', toHost:'به «'+HOST+'»', toBoard:'روی میز مشترک', pick:'انتخاب فایل',
-  board:'میز مشترک', boardPh:'متن یا لینک برای همهٔ دستگاه‌ها…', put:'بگذار', boardNone:'میز خالی است.', from:'از ', copy:'کپی', copied:'کپی شد', away:'هنوز روی «'+HOST+'» نیست', nFiles:' فایل',
-  forYou:'فایل‌هایی که برایت گذاشته‌اند', queued:'در صف', ok:'فرستاده شد', bad:'نشد', lost:'اتصال قطع شد', get:'دریافت', pct:'٪', units:['بایت','کیلوبایت','مگابایت','گیگابایت'],
+  brand:'دست‌به‌دست', intro:'از راه «'+HOST+'». تا وقتی آن دستگاه روشن است و روی شبکه‌اش هستی کار می‌کند.',
+  devices:'دستگاه‌ها', devicesHint:'برای فرستادن فایل روی یک دستگاه بزن.', connected:'وصل', offline:'در دسترس نیست', thisHost:'دستگاهِ همین لینک',
+  inbox:'فایل‌های رسیده برای تو', inboxNone:'هنوز چیزی نیست. فایل‌هایی که برای این گوشی فرستاده شوند اینجا می‌آیند.',
+  board:'میز مشترک', boardPh:'متن یا لینک برای همهٔ دستگاه‌ها…', put:'بگذار', boardFile:'گذاشتن فایل روی میز', boardNone:'میز خالی است.', from:'از ', copy:'کپی', copied:'کپی شد', away:'در حال آماده‌شدن…', nFiles:' فایل',
+  queued:'در صف', uploading:'در حال فرستادن ', ok:'فرستاده شد', bad:'نشد', lost:'اتصال قطع شد', get:'دریافت', pct:'٪', units:['بایت','کیلوبایت','مگابایت','گیگابایت'], to:' ← ',
+  st:{connecting:'در حال اتصال…', asking:'منتظر تأیید گیرنده…', active:'در حال فرستادن ', waiting:'قطع شد؛ با برگشتن دستگاه ادامه پیدا می‌کند', done:'فرستاده شد', rejected:'رد شد', cancelled:'لغو شد', failed:'ناموفق'},
   tipTitle:'روی صفحهٔ اصلی گوشی نگهش دار', tipIos:['پایین Safari دکمهٔ Share (اشتراک‌گذاری) را بزن.','«Add to Home Screen» را انتخاب کن.','از این به بعد «دست‌به‌دست» را از صفحهٔ اصلی باز کن.'],
   tipOther:['منوی مرورگر را باز کن.','«Add to Home screen» یا «Install» را انتخاب کن.'], tipClose:'فعلاً نه'
 };
-[['t-brand','brand'],['t-intro','intro'],['t-send','send'],['to-host','toHost'],['to-board','toBoard'],['t-pick','pick'],['t-board','board'],['put','put'],['t-for-you','forYou'],['t-tip-title','tipTitle'],['tip-close','tipClose']]
+[['t-brand','brand'],['t-intro','intro'],['t-devices','devices'],['t-devices-hint','devicesHint'],['t-inbox','inbox'],['t-board','board'],['put','put'],['t-board-file','boardFile'],['t-tip-title','tipTitle'],['tip-close','tipClose']]
   .forEach(function(p){$(p[0]).textContent=TX[p[1]]});
 $('text').placeholder = TX.boardPh; $('text').setAttribute('aria-label', TX.boardPh);
 document.title = TX.brand;
 
 function size(n){var u=TX.units,i=0;while(n>=1024&&i<3){n/=1024;i++}return (i?n.toFixed(1):n)+' '+u[i]}
 function el(tag, cls, text){var e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
+var ICON = {
+  laptop:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/></svg>',
+  phone:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/></svg>',
+  desktop:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M9 20h6M12 16v4"/></svg>'
+};
+function icon(k){ return ICON[k==='android'?'phone':k==='windows'?'desktop':'laptop'] }
 
 // ---- adding to the home screen. A phone offers no way to do this for the user, so the steps are spelled out.
 var standalone = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
@@ -126,28 +148,35 @@ if (!standalone && mobile && !dismissed) {
 }
 $('tip-close').onclick = function(){ $('tip').hidden = true; try { localStorage.setItem('dbd-tip', '1') } catch (e) {} };
 
-// ---- sending
-var target = 'host';
-function setTarget(t){ target = t; $('to-host').setAttribute('aria-pressed', t === 'host'); $('to-board').setAttribute('aria-pressed', t === 'board') }
-$('to-host').onclick = function(){ setTarget('host') }; $('to-board').onclick = function(){ setTarget('board') };
+// ---- sending: every file goes to the device of this link first; for another device it is passed on from there
 var queue=[], busy=false;
+function enqueue(files, url, label, after){
+  for(var i=0;i<files.length;i++){
+    var f=files[i], li=el('li'), box=el('div','grow'), st=el('span','s',TX.queued), bar=el('span','prog'), fill=el('i');
+    fill.style.width='0%'; bar.appendChild(fill);
+    box.appendChild(el('span','nm',f.name+(label?TX.to+label:''))); box.appendChild(st); box.appendChild(bar);
+    li.appendChild(box); $('acts').insertBefore(li, $('acts').firstChild);
+    queue.push({file:f,st:st,fill:fill,bar:bar,li:li,url:url,after:after});
+  }
+  next();
+}
 function next(){
   if(busy||!queue.length)return; busy=true;
   var job=queue.shift(), x=new XMLHttpRequest();
-  x.open('PUT', base+(job.board?'/board/up/':'/up/')+encodeURIComponent(job.file.name));
-  x.upload.onprogress=function(e){ if(e.lengthComputable) job.st.textContent=Math.floor(e.loaded/e.total*100)+TX.pct };
-  x.onload=function(){ var ok=x.status>=200&&x.status<300; job.st.textContent=ok?TX.ok:TX.bad; job.st.className='st '+(ok?'ok':'bad'); busy=false; if(job.board)refreshBoard(); next() };
-  x.onerror=function(){ job.st.textContent=TX.lost; job.st.className='st bad'; busy=false; next() };
+  x.open('PUT', base+job.url+encodeURIComponent(job.file.name));
+  x.upload.onprogress=function(e){ if(e.lengthComputable){ var p=Math.floor(e.loaded/e.total*100); job.st.textContent=TX.uploading+p+TX.pct; job.fill.style.width=p+'%' } };
+  x.onload=function(){
+    var ok=x.status>=200&&x.status<300; busy=false;
+    job.bar.remove();
+    if(!ok){ job.st.textContent=x.responseText||TX.bad; job.st.className='s bad' }
+    else if(job.after==='relay'){ job.li.remove() }   // from here on the device of this link reports on it
+    else { job.st.textContent=TX.ok; job.st.className='s ok' }
+    refresh(); next();
+  };
+  x.onerror=function(){ job.bar.remove(); job.st.textContent=TX.lost; job.st.className='s bad'; busy=false; next() };
   x.send(job.file);
 }
-$('pick').onchange=function(){
-  for(var i=0;i<this.files.length;i++){
-    var f=this.files[i], li=el('li'), st=el('span','st',TX.queued);
-    li.appendChild(el('span','nm',f.name+' · '+size(f.size))); li.appendChild(st);
-    $('ups').appendChild(li); queue.push({file:f,st:st,board:target==='board'});
-  }
-  this.value=''; next();
-};
+$('board-pick').onchange=function(){ enqueue(this.files, '/board/up/', TX.board); this.value='' };
 
 // ---- shared board
 function copy(text, btn){
@@ -157,46 +186,72 @@ function copy(text, btn){
   document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, text.length);
   try { document.execCommand('copy'); done() } catch (e) {} finally { ta.remove() }
 }
-var boardSeen = null;
-function refreshBoard(){
-  fetch(base+'/board').then(function(r){return r.json()}).then(function(list){
-    var key = JSON.stringify(list); if (key === boardSeen) return; boardSeen = key;
-    var ul=$('board'); ul.textContent='';
-    if(!list.length){var li=el('li');li.appendChild(el('span','s',TX.boardNone));ul.appendChild(li);return}
-    list.forEach(function(b){
-      var li=el('li'), box=el('div'), act;
-      if (b.kind === 'text') {
-        var t=el('span','nm txt',b.text); t.dir='auto'; box.appendChild(t); box.appendChild(el('span','s',TX.from+b.from));
-        act=el('button','btn go',TX.copy); act.type='button'; act.onclick=function(){ copy(b.text, act) };
-      } else {
-        box.appendChild(el('span','nm',b.name));
-        box.appendChild(el('span','s',size(b.size)+(b.files>1?' · '+b.files+TX.nFiles:'')+' · '+TX.from+b.from+(b.here?'':' · '+TX.away)));
-        if (b.here) { act=el('a','btn go',TX.get); act.href=base+'/board/dl/'+b.id }
-      }
-      li.appendChild(box); if (act) li.appendChild(act); ul.appendChild(li);
-    });
-  }).catch(function(){});
-}
 function putText(){
   var v=$('text').value.trim(); if(!v)return;
-  fetch(base+'/board/text',{method:'POST',headers:{'content-type':'text/plain;charset=utf-8'},body:v}).then(function(r){ if(r.ok){ $('text').value=''; refreshBoard() } });
+  fetch(base+'/board/text',{method:'POST',headers:{'content-type':'text/plain;charset=utf-8'},body:v}).then(function(r){ if(r.ok){ $('text').value=''; refresh() } });
 }
 $('put').onclick=putText;
 $('text').onkeydown=function(e){ if(e.key==='Enter') putText() };
 
-// ---- files put out for this guest
-function refreshFiles(){
-  fetch(base+'/list').then(function(r){return r.json()}).then(function(list){
-    $('for-you').hidden = !list.length;
-    var ul=$('files'); ul.textContent='';
-    list.forEach(function(f){
-      var li=el('li'), a=el('a','btn go',TX.get); a.href=base+'/dl/'+f.idx;
-      li.appendChild(el('span','nm',f.name+' · '+size(f.size))); li.appendChild(a); ul.appendChild(li);
-    });
-  }).catch(function(){});
+// ---- drawing. Each part is redrawn only when it changed, so an open file picker or a selection is not disturbed.
+var seen = {};
+function changed(key, value){ var j=JSON.stringify(value); if(seen[key]===j) return false; seen[key]=j; return true }
+function empty(ul, text){ var li=el('li'); li.appendChild(el('span','s',text)); ul.appendChild(li) }
+
+function drawDevices(s){
+  if(!changed('devs',[s.host,s.peers])) return;
+  var box=$('devs'); box.textContent='';
+  function card(name, kind, online, sub, url, label){
+    var c=el(online?'label':'div','dev'+(online?'':' off'));
+    c.innerHTML=icon(kind); c.appendChild(el('b',null,name));
+    var st=el('span','s'); st.appendChild(el('span','dot'+(online?' on':''))); st.appendChild(el('span',null,sub)); c.appendChild(st);
+    if(online){ var inp=el('input'); inp.type='file'; inp.multiple=true; inp.onchange=function(){ enqueue(this.files,url,label,url==='/up/'?'':'relay'); this.value='' }; c.appendChild(inp) }
+    box.appendChild(c);
+  }
+  card(s.host.name, s.host.kind, true, TX.thisHost, '/up/', s.host.name);
+  s.peers.forEach(function(p){ card(p.name, p.kind, p.online, p.online?TX.connected:TX.offline, '/to/'+p.id+'/', p.name) });
 }
-function refresh(){ refreshBoard(); refreshFiles() }
-refresh(); setInterval(refresh, 4000);
+function drawRelays(s){
+  if(!changed('relays',s.relays)) return;
+  Array.prototype.slice.call(document.querySelectorAll('#acts li[data-relay]')).forEach(function(n){ n.remove() });
+  s.relays.forEach(function(r){
+    var li=el('li'), box=el('div','grow'); li.setAttribute('data-relay','1');
+    var text=TX.st[r.state]||r.state; if(r.state==='active'&&r.total) text+=Math.floor(r.done/r.total*100)+TX.pct; if(r.error&&r.state!=='waiting') text+=' · '+r.error;
+    box.appendChild(el('span','nm',r.name+TX.to+r.peer));
+    box.appendChild(el('span','s '+(r.state==='done'?'ok':(r.state==='failed'||r.state==='rejected')?'bad':''),text));
+    li.appendChild(box); $('acts').appendChild(li);
+  });
+}
+function drawInbox(s){
+  if(!changed('inbox',s.inbox)) return;
+  var ul=$('files'); ul.textContent='';
+  if(!s.inbox.length) return empty(ul, TX.inboxNone);
+  s.inbox.forEach(function(f){
+    var li=el('li'), a=el('a','btn go',TX.get); a.href=base+'/dl/'+f.idx;
+    li.appendChild(el('span','nm',f.name+' · '+size(f.size))); li.appendChild(a); ul.appendChild(li);
+  });
+}
+function drawBoard(s){
+  if(!changed('board',s.board)) return;
+  var ul=$('board'); ul.textContent='';
+  if(!s.board.length) return empty(ul, TX.boardNone);
+  s.board.forEach(function(b){
+    var li=el('li'), box=el('div'), act;
+    if (b.kind === 'text') {
+      var t=el('span','nm txt',b.text); t.dir='auto'; box.appendChild(t); box.appendChild(el('span','s',TX.from+b.from));
+      act=el('button','btn go',TX.copy); act.type='button'; act.onclick=function(){ copy(b.text, act) };
+    } else {
+      box.appendChild(el('span','nm',b.name));
+      box.appendChild(el('span','s',size(b.size)+(b.files>1?' · '+b.files+TX.nFiles:'')+' · '+TX.from+b.from+(b.here||b.files>1?'':' · '+TX.away)));
+      if (b.here) { act=el('a','btn go',TX.get); act.href=base+'/board/dl/'+b.id }
+    }
+    li.appendChild(box); if (act) li.appendChild(act); ul.appendChild(li);
+  });
+}
+function refresh(){
+  fetch(base+'/state').then(function(r){return r.json()}).then(function(s){ drawDevices(s); drawRelays(s); drawInbox(s); drawBoard(s) }).catch(function(){});
+}
+refresh(); setInterval(refresh, 2500);
 document.addEventListener('visibilitychange', function(){ if(!document.hidden) refresh() });
 </script>
 </body>

@@ -399,10 +399,11 @@ impl Core {
     }
 
     /// An always-on device fetches whatever it does not have yet, a few at a time.
+    /// So does a device that serves a phone through the browser link: the phone can only take what is here.
     pub(crate) fn board_auto(&self) {
         let missing: Vec<String> = {
             let cfg = self.cfg.lock().unwrap();
-            if !cfg.always_on {
+            if !cfg.always_on && !cfg.guest_on {
                 return;
             }
             cfg.board.iter().filter(|e| e.item.gone == 0 && e.item.kind == "file" && !has_content(e)).map(|e| e.item.id.clone()).collect()

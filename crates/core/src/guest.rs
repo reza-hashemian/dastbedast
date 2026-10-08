@@ -35,6 +35,8 @@ pub(crate) struct Guest {
     pub url: String,
     pub qr: String,
     pub shared: Vec<PathBuf>,
+    /// Transfers this device is passing on for the guest.
+    relays: Vec<String>,
     stop: Option<oneshot::Sender<()>>,
 }
 
@@ -75,6 +77,8 @@ impl Core {
             .route("/g/:token", get(page))
             .route("/g/:token/manifest.webmanifest", get(manifest))
             .route("/g/:token/icon.png", get(icon))
+            .route("/g/:token/state", get(state))
+            .route("/g/:token/to/:peer/:name", put(relay))
             .route("/g/:token/list", get(list))
             .route("/g/:token/dl/:idx", get(download))
             .route("/g/:token/up/:name", put(upload))
@@ -92,9 +96,10 @@ impl Core {
                 })
                 .await;
         });
-        self.rt.lock().unwrap().guest = Some(Guest { token, port, url: String::new(), qr: String::new(), shared: vec![], stop: Some(stop) });
+        self.rt.lock().unwrap().guest = Some(Guest { token, port, url: String::new(), qr: String::new(), shared: vec![], relays: vec![], stop: Some(stop) });
         self.guest_refresh();
         self.changed();
+        self.board_auto();
         Ok(())
     }
 
@@ -153,6 +158,14 @@ impl Core {
         self.changed();
     }
 
+    /// Takes back everything put out for the guest.
+    pub fn guest_clear(&self) {
+        if let Some(g) = self.rt.lock().unwrap().guest.as_mut() {
+            g.shared.clear();
+        }
+        self.changed();
+    }
+
     fn guest_ok(&self, token: &str) -> bool {
         self.rt.lock().unwrap().guest.as_ref().is_some_and(|g| g.token == token)
     }
@@ -194,13 +207,8 @@ async fn icon(State(core): State<Core>, Path(token): Path<String>) -> Response {
     ([(header::CONTENT_TYPE, "image/png"), (header::CACHE_CONTROL, "max-age=86400")], ICON).into_response()
 }
 
-async fn list(State(core): State<Core>, Path(token): Path<String>) -> Response {
-    let rt = core.rt.lock().unwrap();
-    let Some(g) = rt.guest.as_ref().filter(|g| g.token == token) else {
-        return not_found();
-    };
-    let files: Vec<Value> = g
-        .shared
+fn shared_json(g: &Guest) -> Vec<Value> {
+    g.shared
         .iter()
         .enumerate()
         .map(|(i, p)| {
@@ -210,8 +218,79 @@ async fn list(State(core): State<Core>, Path(token): Path<String>) -> Response {
                 "size": std::fs::metadata(p).map(|m| m.len()).unwrap_or(0),
             })
         })
+        .collect()
+}
+
+async fn list(State(core): State<Core>, Path(token): Path<String>) -> Response {
+    let rt = core.rt.lock().unwrap();
+    let Some(g) = rt.guest.as_ref().filter(|g| g.token == token) else {
+        return not_found();
+    };
+    Json(shared_json(g)).into_response()
+}
+
+/// Everything the page shows, in one answer: the devices it can send to, what waits for it,
+/// the shared board, and how the files it handed over for other devices are getting on.
+async fn state(State(core): State<Core>, Path(token): Path<String>) -> Response {
+    if !core.guest_ok(&token) {
+        return not_found();
+    }
+    let board = board_json(&core);
+    let peers = core.cfg.lock().unwrap().peers.clone();
+    let info = core.info();
+    let rt = core.rt.lock().unwrap();
+    let Some(g) = rt.guest.as_ref() else { return not_found() };
+    let name_of = |id: &str| peers.iter().find(|p| p.id == id).map(|p| p.name.clone()).unwrap_or_default();
+    let relays: Vec<Value> = rt
+        .transfers
+        .iter()
+        .rev()
+        .filter(|t| g.relays.contains(&t.id))
+        .map(|t| json!({ "id": t.id, "name": t.name, "peer": name_of(&t.peer_id), "state": t.state, "done": t.done, "total": t.total, "error": t.error }))
         .collect();
-    Json(files).into_response()
+    Json(json!({
+        "host": { "name": info.name, "kind": info.kind },
+        "peers": peers.iter().map(|p| json!({ "id": p.id, "name": p.name, "kind": p.kind, "online": rt.links.contains_key(&p.id) })).collect::<Vec<_>>(),
+        "inbox": shared_json(g),
+        "board": board,
+        "relays": relays,
+    }))
+    .into_response()
+}
+
+/// The guest sends a file to one of this device's paired devices: it is taken in here and passed on.
+async fn relay(State(core): State<Core>, Path((token, peer, name)): Path<(String, String, String)>, body: Body) -> Response {
+    if !core.guest_ok(&token) || !core.is_paired(&peer) {
+        return not_found();
+    }
+    let dir = PathBuf::from(core.cfg.lock().unwrap().inbox_dir.clone()).join(".partial").join(format!("relay-{}", new_id()));
+    let Some((dest, _, _)) = store_upload(dir.clone(), &name, body).await else {
+        let _ = tokio::fs::remove_dir_all(&dir).await;
+        return StatusCode::BAD_REQUEST.into_response();
+    };
+    let id = match core.send(&peer, vec![dest.to_string_lossy().into_owned()]).await {
+        Ok(id) => id,
+        Err(e) => {
+            let _ = tokio::fs::remove_dir_all(&dir).await;
+            return (StatusCode::BAD_REQUEST, e.to_string()).into_response();
+        }
+    };
+    if let Some(g) = core.rt.lock().unwrap().guest.as_mut() {
+        g.relays.push(id.clone());
+    }
+    // The copy held here is only needed until the transfer has ended one way or another.
+    let (c, tid) = (core.clone(), id.clone());
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            let state = c.rt.lock().unwrap().transfers.iter().find(|t| t.id == tid).map(|t| t.state);
+            if !matches!(state, Some("connecting" | "asking" | "active" | "waiting")) {
+                let _ = tokio::fs::remove_dir_all(&dir).await;
+                break;
+            }
+        }
+    });
+    Json(json!({ "id": id })).into_response()
 }
 
 async fn send_file(path: PathBuf, name: String) -> Response {
@@ -296,12 +375,9 @@ async fn upload(State(core): State<Core>, Path((token, name)): Path<(String, Str
 
 // ---------------------------------------------------------------- the shared board, for the guest
 
-async fn board_list(State(core): State<Core>, Path(token): Path<String>) -> Response {
-    if !core.guest_ok(&token) {
-        return not_found();
-    }
+fn board_json(core: &Core) -> Vec<Value> {
     let cfg = core.cfg.lock().unwrap();
-    let items: Vec<Value> = cfg
+    cfg
         .board
         .iter()
         .rev()
@@ -313,8 +389,14 @@ async fn board_list(State(core): State<Core>, Path(token): Path<String>) -> Resp
             let here = it.kind == "file" && e.local.as_ref().is_some_and(|l| std::path::Path::new(&l.path).is_file());
             json!({ "id": it.id, "kind": it.kind, "name": it.name, "text": it.text, "size": it.size, "files": it.files, "from": from, "at": it.at, "here": here })
         })
-        .collect();
-    Json(items).into_response()
+        .collect()
+}
+
+async fn board_list(State(core): State<Core>, Path(token): Path<String>) -> Response {
+    if !core.guest_ok(&token) {
+        return not_found();
+    }
+    Json(board_json(&core)).into_response()
 }
 
 async fn board_text(State(core): State<Core>, Path(token): Path<String>, text: String) -> Response {
