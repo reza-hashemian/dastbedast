@@ -195,7 +195,8 @@ async fn browser_guest() {
     assert_eq!(b.snap()["inbox"][0]["from"], "مهمان مرورگر");
 
     // A wrong token gets nothing.
-    let resp = http(port, put("g/0000000000000000"), &body).await;
+    // (Sent without a body: a server that refuses before reading one may reset the connection.)
+    let resp = http(port, "PUT /g/0000000000000000/up/note.bin HTTP/1.1\r\nHost: x\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".into(), b"").await;
     assert!(resp.starts_with(b"HTTP/1.1 404"));
 
     // Download of a file put out for the guest.
