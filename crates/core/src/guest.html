@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="{{LANG}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DastBeDast</title>
+<style>
+:root{--bg:#EDF1F4;--surface:#FAFCFD;--line:#CBD6DD;--ink:#12232E;--muted:#526773;--accent:#0A7486;--on:#fff;--ok:#1E8A55;--bad:#B3402F}
+@media (prefers-color-scheme:dark){:root{--bg:#0D181E;--surface:#15252E;--line:#2A3F4B;--ink:#E4EEF2;--muted:#93A8B3;--accent:#45BFD2;--on:#06222A;--ok:#4CC48A;--bad:#EE8572;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.8 Vazirmatn,Tahoma,"Segoe UI",sans-serif;padding:24px 16px}
+main{max-width:520px;margin:auto;display:flex;flex-direction:column;gap:18px}
+h1{margin:0;font-size:1.5rem;color:var(--accent)}
+h2{margin:0;font-size:1rem}
+p{margin:0;color:var(--muted)}
+section{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.pick{display:block;text-align:center;background:var(--accent);color:var(--on);border-radius:10px;padding:12px;font-weight:700;cursor:pointer}
+.pick:focus-within{outline:2px solid var(--ink);outline-offset:2px}
+input[type=file]{position:absolute;opacity:0;width:1px;height:1px}
+ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+li{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line);font-size:.92rem}
+li:first-child{border-top:0}
+li span:first-child{overflow-wrap:anywhere;min-width:0}
+.s{color:var(--muted);white-space:nowrap;font-size:.84rem}
+.ok{color:var(--ok)}.bad{color:var(--bad)}
+a{color:var(--accent);font-weight:700}
+</style>
+</head>
+<body>
+<main>
+  <div>
+    <h1 id="t-brand"></h1>
+    <p id="t-intro"></p>
+  </div>
+  <section>
+    <h2 id="t-send"></h2>
+    <label class="pick"><span id="t-pick"></span><input id="pick" type="file" multiple></label>
+    <ul id="ups"></ul>
+  </section>
+  <section>
+    <h2 id="t-for-you"></h2>
+    <ul id="files"></ul>
+  </section>
+</main>
+<span id="host" hidden>{{HOST}}</span>
+<script>
+var base = location.pathname.replace(/\/$/, '');
+// The page speaks the language chosen on the device that shows the link.
+var EN = document.documentElement.lang === 'en', HOST = document.getElementById('host').textContent;
+document.documentElement.dir = EN ? 'ltr' : 'rtl';
+var TX = EN ? {
+  brand:'DastBeDast', intro:'You are connected to “'+HOST+'”. This page works only on this network.', send:'Send to “'+HOST+'”', pick:'Choose files',
+  forYou:'Files put out for you', none:'Nothing yet.', queued:'queued', ok:'received', bad:'failed', lost:'connection lost', get:'Download', pct:'%', units:['B','KB','MB','GB']
+} : {
+  brand:'دست‌به‌دست', intro:'به «'+HOST+'» وصل هستی. این صفحه فقط روی همین شبکه کار می‌کند.', send:'فرستادن به «'+HOST+'»', pick:'انتخاب فایل',
+  forYou:'فایل‌هایی که برایت گذاشته‌اند', none:'هنوز چیزی نیست.', queued:'در صف', ok:'رسید', bad:'نشد', lost:'اتصال قطع شد', get:'دریافت', pct:'٪', units:['بایت','کیلوبایت','مگابایت','گیگابایت']
+};
+[['t-brand','brand'],['t-intro','intro'],['t-send','send'],['t-pick','pick'],['t-for-you','forYou']].forEach(function(p){document.getElementById(p[0]).textContent=TX[p[1]]});
+document.title = TX.brand;
+function size(n){var u=TX.units,i=0;while(n>=1024&&i<3){n/=1024;i++}return (i?n.toFixed(1):n)+' '+u[i]}
+function el(tag, cls, text){var e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
+var queue=[], busy=false;
+function next(){
+  if(busy||!queue.length)return; busy=true;
+  var job=queue.shift(), x=new XMLHttpRequest();
+  x.open('PUT', base+'/up/'+encodeURIComponent(job.file.name));
+  x.upload.onprogress=function(e){ if(e.lengthComputable) job.st.textContent=Math.floor(e.loaded/e.total*100)+TX.pct };
+  x.onload=function(){ var ok=x.status>=200&&x.status<300; job.st.textContent=ok?TX.ok:TX.bad; job.st.className='s '+(ok?'ok':'bad'); busy=false; next() };
+  x.onerror=function(){ job.st.textContent=TX.lost; job.st.className='s bad'; busy=false; next() };
+  x.send(job.file);
+}
+document.getElementById('pick').onchange=function(){
+  for(var i=0;i<this.files.length;i++){
+    var f=this.files[i], li=el('li'), st=el('span','s',TX.queued);
+    li.appendChild(el('span',null,f.name+' · '+size(f.size))); li.appendChild(st);
+    document.getElementById('ups').appendChild(li); queue.push({file:f,st:st});
+  }
+  this.value=''; next();
+};
+function refresh(){
+  fetch(base+'/list').then(function(r){return r.json()}).then(function(list){
+    var ul=document.getElementById('files'); ul.textContent='';
+    if(!list.length){var li=el('li');li.appendChild(el('span','s',TX.none));ul.appendChild(li);return}
+    list.forEach(function(f){
+      var li=el('li'), a=el('a',null,TX.get); a.href=base+'/dl/'+f.idx;
+      li.appendChild(el('span',null,f.name+' · '+size(f.size))); li.appendChild(a); ul.appendChild(li);
+    });
+  }).catch(function(){});
+}
+refresh(); setInterval(refresh, 4000);
+</script>
+</body>
+</html>

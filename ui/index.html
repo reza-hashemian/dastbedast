@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>دست‌به‌دست</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="bar">
+  <span class="brand" data-t="brand">دست‌به‌دست</span>
+  <span class="netchip" id="netchip"></span>
+  <span class="grow"></span>
+  <button class="me" id="lang" type="button" data-act="lang"></button>
+  <button class="me" id="me" type="button" data-act="settings" data-t-title="settings_title"></button>
+</header>
+
+<main class="app">
+  <aside class="pane" id="pane-nets">
+    <span class="label" data-t="networks">شبکه‌ها</span>
+    <div class="nets" id="nets"></div>
+    <button class="newconn" type="button" data-act="newconn" data-t="newconn_btn">+ اتصال جدید</button>
+  </aside>
+
+  <section class="pane" id="pane-main">
+    <span class="label" data-t="devices">دستگاه‌ها</span>
+    <div class="devs" id="devs"></div>
+    <span class="label" data-t="board">میز مشترک</span>
+    <div class="board" id="board-box">
+      <div class="line">
+        <input id="board-text" data-t-ph="board_ph" data-t-aria="board_ph" autocomplete="off">
+        <button type="button" class="btn go" data-act="board-text" data-t="put">بگذار</button>
+        <button type="button" class="btn" data-act="board-files" data-t="file">فایل</button>
+        <button type="button" class="btn" data-act="board-folder" data-t="folder">پوشه</button>
+      </div>
+      <div class="rows" id="board"></div>
+    </div>
+    <div class="label-row"><span class="label" data-t="transfers">انتقال‌ها</span><button class="link" type="button" data-act="clear-transfers" id="clear-transfers" data-t="clear_done" hidden>پاک‌کردن تمام‌شده‌ها</button></div>
+    <div class="rows" id="transfers"></div>
+  </section>
+
+  <aside class="pane" id="pane-inbox">
+    <span class="label" data-t="accept_here">پذیرش فایل روی این دستگاه</span>
+    <div class="seg" role="group" data-t-aria="accept_mode">
+      <button type="button" data-act="accept" data-mode="ask" id="mode-ask" data-t="mode_ask">با تأیید</button>
+      <button type="button" data-act="accept" data-mode="auto" id="mode-auto" data-t="mode_auto">بدون تأیید</button>
+    </div>
+    <p class="hint" id="mode-hint"></p>
+    <div id="offers"></div>
+    <span class="label" data-t="inbox">صندوق دریافت</span>
+    <div class="rows" id="inbox"></div>
+    <span class="hint"><span data-t="folder_colon">پوشه:</span> <bdi class="ltr" id="inbox-dir"></bdi></span>
+  </aside>
+</main>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<dialog id="dlg-pair"><div class="dlg" id="pair-body"></div></dialog>
+
+<dialog id="dlg-new">
+  <form method="dialog" class="dlg">
+    <div class="dlg-head"><h2 data-t="newconn">اتصال جدید</h2><button class="x" value="close" data-t-aria="close">×</button></div>
+    <p class="hint" id="new-status"></p>
+
+    <h3 data-t="nearby">دستگاه‌های نزدیک</h3>
+    <div class="rows" id="nearby"></div>
+    <div class="line"><button type="button" class="btn" data-act="scan" id="btn-scan" data-t="scan">جست‌وجوی شبکه</button><span class="hint" data-t="scan_hint"></span></div>
+
+    <h3 data-t="by_addr">با آدرس</h3>
+    <div class="line">
+      <input id="addr-host" class="ltr" data-t-ph="addr_ph" data-t-aria="address" autocomplete="off">
+      <input id="addr-port" class="ltr port" inputmode="numeric" value="47800" data-t-aria="port">
+      <button type="button" class="btn go" data-act="pair-addr" data-t="connect">وصل شو</button>
+    </div>
+    <label class="check"><input type="checkbox" id="addr-anywhere"> <span data-t="static_check"></span></label>
+    <p class="hint" id="static-hint"></p>
+
+    <h3 data-t="guest">مهمان مرورگر</h3>
+    <div id="guest"></div>
+  </form>
+</dialog>
+
+<dialog id="dlg-peer"><form method="dialog" class="dlg" id="peer-body"></form></dialog>
+<dialog id="dlg-net"><form method="dialog" class="dlg" id="net-body"></form></dialog>
+<dialog id="dlg-settings"><form method="dialog" class="dlg" id="settings-body"></form></dialog>
+<dialog id="dlg-paths">
+  <form method="dialog" class="dlg">
+    <div class="dlg-head"><h2 id="paths-title"></h2><button class="x" value="close" data-t-aria="close">×</button></div>
+    <p class="hint" data-t="paths_hint"></p>
+    <textarea id="paths-text" class="ltr" rows="4" placeholder="/home/me/file.zip"></textarea>
+    <div class="line end"><button type="button" class="btn go" data-act="paths-ok" data-t="ok">تأیید</button></div>
+  </form>
+</dialog>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+[package]
+name = "dbd"
+version = "0.2.0"
+edition = "2021"
+
+[dependencies]
+dbd-core = { path = "../core" }
+tokio.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+axum.workspace = true
+futures-util.workspace = true
+rand = "0.8"
