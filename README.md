@@ -22,8 +22,10 @@ Pair two devices once and they find each other from then on. No account, no clou
 | Platform | State |
 |---|---|
 | Linux | works; `.deb` package |
-| Windows | builds in CI; not yet tried on real hardware |
-| Android | in progress |
+| Windows | builds and passes its tests in CI; installer |
+| macOS | builds and passes its tests in CI; universal `.dmg`, not notarised |
+| Android | experimental APK; works while the app is open |
+| iPhone | no app: a page served by one of your computers, added to the home screen |
 
 ## Install
 
@@ -31,6 +33,9 @@ Packages are on the [releases page](../../releases).
 
 - **Linux:** `sudo apt install ./DastBeDast_*_amd64.deb`
 - **Windows:** run `DastBeDast_*_x64-setup.exe`. Windows asks once whether to allow it through the firewall; say yes for private networks.
+- **macOS:** open the `.dmg` and drag the app to Applications. It is not notarised, so the first time right-click it and choose Open.
+- **Android:** install the `.apk`.
+- **iPhone:** on a computer press “Install on iPhone”, scan the code, then in Safari choose Share → Add to Home Screen.
 - **Headless (server, always-on box):** run `dbd` and open the printed local address in a browser.
 
 Devices talk on TCP port 47800 and find each other with a UDP beacon on 47801.

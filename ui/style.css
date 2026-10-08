@@ -61,6 +61,8 @@ button:disabled{opacity:.5;cursor:default}
 .net.current:hover{border-color:var(--accent)}
 .newconn{margin-top:auto;border:1px dashed var(--accent);color:var(--accent);background:none;border-radius:var(--r);padding:8px 10px;font-weight:700}
 .newconn:hover{background:var(--accent-soft)}
+.newconn + .newconn{margin-top:0;border-style:solid;border-color:var(--line);color:var(--ink)}
+.steps{margin:0;padding-inline-start:22px;font-size:.9rem;line-height:1.9}
 
 .devs{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
 .dev{position:relative;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);display:flex;flex-direction:column}

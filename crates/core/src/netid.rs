@@ -113,10 +113,10 @@ fn tool(program: &str, args: &[&str]) -> Option<String> {
     Some(String::from_utf8_lossy(&out.stdout).into_owned())
 }
 
-#[cfg(windows)]
-pub fn detect() -> Option<NetInfo> {
+/// Asking the system tools costs a few processes, so the answer is reused while the address stays the same.
+#[cfg(any(windows, target_os = "macos"))]
+fn cached(look: impl FnOnce() -> Option<NetInfo>) -> Option<NetInfo> {
     use std::{sync::Mutex, time::Instant};
-    // Asking the system tools costs two processes, so the answer is reused while the address stays the same.
     static LAST: Mutex<Option<(Instant, NetInfo)>> = Mutex::new(None);
     let quick = local_ip_towards(Ipv4Addr::new(8, 8, 8, 8));
     if let Some((at, info)) = LAST.lock().unwrap().as_ref() {
@@ -126,23 +126,79 @@ pub fn detect() -> Option<NetInfo> {
             return Some(info.clone());
         }
     }
-    let found = (|| {
-        let (gateway, local_ip, mask) = parse_route_print(&tool("route", &["print", "-4"])?)?;
-        let mac = tool("arp", &["-a"]).and_then(|out| parse_arp(&out, gateway));
-        let subnet = Ipv4Addr::from(u32::from(local_ip) & u32::from(mask));
-        let id = match mac {
-            Some(mac) => format!("mac:{mac}"),
-            None => format!("gw:{gateway}/{subnet}"),
-        };
-        Some(NetInfo { id, local_ip, mask, gateway: Some(gateway), iface: "wlan".into() })
-    })();
+    let found = look();
     *LAST.lock().unwrap() = found.clone().map(|info| (Instant::now(), info));
     found
 }
 
+#[cfg(any(windows, target_os = "macos"))]
+fn net_info(gateway: Ipv4Addr, local_ip: Ipv4Addr, mask: Ipv4Addr, mac: Option<String>, iface: &str) -> NetInfo {
+    let subnet = Ipv4Addr::from(u32::from(local_ip) & u32::from(mask));
+    let id = match mac {
+        Some(mac) => format!("mac:{mac}"),
+        None => format!("gw:{gateway}/{subnet}"),
+    };
+    NetInfo { id, local_ip, mask, gateway: Some(gateway), iface: iface.into() }
+}
+
+#[cfg(windows)]
+pub fn detect() -> Option<NetInfo> {
+    cached(|| {
+        let (gateway, local_ip, mask) = parse_route_print(&tool("route", &["print", "-4"])?)?;
+        let mac = tool("arp", &["-a"]).and_then(|out| parse_arp(&out, gateway));
+        Some(net_info(gateway, local_ip, mask, mac, "wlan"))
+    })
+}
+
+/// Gateway and interface in the output of macOS `route -n get default`.
+#[cfg(any(target_os = "macos", test))]
+fn parse_mac_route(out: &str) -> Option<(Ipv4Addr, String)> {
+    let field = |key: &str| out.lines().find_map(|l| l.trim().strip_prefix(key).map(|v| v.trim().to_string()));
+    Some((field("gateway:")?.parse().ok()?, field("interface:")?))
+}
+
+/// This device's address and netmask in the output of macOS `ifconfig <interface>`.
+#[cfg(any(target_os = "macos", test))]
+fn parse_ifconfig(out: &str) -> Option<(Ipv4Addr, Ipv4Addr)> {
+    out.lines().find_map(|l| {
+        let c: Vec<&str> = l.split_whitespace().collect();
+        if c.len() < 4 || c[0] != "inet" || c[2] != "netmask" {
+            return None;
+        }
+        let mask = u32::from_str_radix(c[3].trim_start_matches("0x"), 16).ok()?;
+        Some((c[1].parse().ok()?, Ipv4Addr::from(mask)))
+    })
+}
+
+/// The hardware address in the output of macOS `arp -n <ip>`, which leaves out leading zeros.
+#[cfg(any(target_os = "macos", test))]
+fn parse_mac_arp(out: &str) -> Option<String> {
+    let mac = out.split_whitespace().skip_while(|w| *w != "at").nth(1)?;
+    let parts: Vec<String> = mac.split(':').map(|p| format!("{p:0>2}").to_lowercase()).collect();
+    let shaped = parts.len() == 6 && parts.iter().all(|p| p.len() == 2 && p.bytes().all(|b| b.is_ascii_hexdigit()));
+    let mac = parts.join(":");
+    (shaped && mac != "00:00:00:00:00:00" && mac != "ff:ff:ff:ff:ff:ff").then_some(mac)
+}
+
+#[cfg(target_os = "macos")]
+fn tool(program: &str, args: &[&str]) -> Option<String> {
+    let out = std::process::Command::new(program).args(args).output().ok()?;
+    Some(String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
+#[cfg(target_os = "macos")]
+pub fn detect() -> Option<NetInfo> {
+    cached(|| {
+        let (gateway, iface) = parse_mac_route(&tool("/sbin/route", &["-n", "get", "default"])?)?;
+        let (local_ip, mask) = parse_ifconfig(&tool("/sbin/ifconfig", &[&iface])?)?;
+        let mac = tool("/usr/sbin/arp", &["-n", &gateway.to_string()]).and_then(|out| parse_mac_arp(&out));
+        Some(net_info(gateway, local_ip, mask, mac, &iface))
+    })
+}
+
 // Android gets gateway-based detection in its own phase.
 // Until then the subnet stands in for the network identity.
-#[cfg(not(any(target_os = "linux", windows)))]
+#[cfg(not(any(target_os = "linux", windows, target_os = "macos")))]
 pub fn detect() -> Option<NetInfo> {
     let local_ip = local_ip_towards(Ipv4Addr::new(8, 8, 8, 8))?;
     let mask = Ipv4Addr::new(255, 255, 255, 0);
@@ -184,7 +240,20 @@ pub async fn suggest_name(_iface: &str) -> Option<String> {
     tokio::task::spawn_blocking(|| tool("netsh", &["wlan", "show", "interfaces"]).and_then(|out| parse_ssid(&out))).await.ok().flatten()
 }
 
-#[cfg(not(any(target_os = "linux", windows)))]
+/// The Wi-Fi name in the output of macOS `networksetup -getairportnetwork <interface>`.
+#[cfg(any(target_os = "macos", test))]
+fn parse_airport(out: &str) -> Option<String> {
+    let name = out.trim().strip_prefix("Current Wi-Fi Network:")?.trim();
+    (!name.is_empty()).then(|| name.to_string())
+}
+
+#[cfg(target_os = "macos")]
+pub async fn suggest_name(iface: &str) -> Option<String> {
+    let iface = iface.to_string();
+    tokio::task::spawn_blocking(move || tool("/usr/sbin/networksetup", &["-getairportnetwork", &iface]).and_then(|out| parse_airport(&out))).await.ok().flatten()
+}
+
+#[cfg(not(any(target_os = "linux", windows, target_os = "macos")))]
 pub async fn suggest_name(_iface: &str) -> Option<String> {
     None
 }
@@ -242,5 +311,17 @@ Network Destination        Netmask          Gateway       Interface  Metric
         assert_eq!(parse_arp(arp, Ipv4Addr::new(192, 168, 1, 9)), None);
         let wlan = "    Name                   : Wi-Fi\n    State                  : connected\n    SSID                   : Home 5G\n    BSSID                  : 3c:84:6a:0b:11:f3\n";
         assert_eq!(parse_ssid(wlan).as_deref(), Some("Home 5G"));
+    }
+
+    #[test]
+    fn macos_tools() {
+        let route = "   route to: default\ndestination: default\n       mask: default\n    gateway: 192.168.1.1\n  interface: en0\n      flags: <UP,GATEWAY,DONE,STATIC,PRCLONING,GLOBAL>\n";
+        assert_eq!(parse_mac_route(route), Some((Ipv4Addr::new(192, 168, 1, 1), "en0".to_string())));
+        let ifconfig = "en0: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500\n\tether a4:83:e7:11:22:33\n\tinet6 fe80::1 prefixlen 64 scopeid 0x6\n\tinet 192.168.1.34 netmask 0xfffffe00 broadcast 192.168.1.255\n";
+        assert_eq!(parse_ifconfig(ifconfig), Some((Ipv4Addr::new(192, 168, 1, 34), Ipv4Addr::new(255, 255, 254, 0))));
+        assert_eq!(parse_mac_arp("? (192.168.1.1) at 3c:84:6a:b:11:f2 on en0 ifscope [ethernet]\n").as_deref(), Some("3c:84:6a:0b:11:f2"));
+        assert_eq!(parse_mac_arp("? (192.168.1.9) at (incomplete) on en0 ifscope [ethernet]\n"), None);
+        assert_eq!(parse_airport("Current Wi-Fi Network: Home 5G\n").as_deref(), Some("Home 5G"));
+        assert_eq!(parse_airport("You are not associated with an AirPort network.\n"), None);
     }
 }

@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -48,6 +48,10 @@ jobs:
             bundles: deb
           - os: windows-latest
             bundles: nsis
+          - os: macos-latest
+            bundles: dmg
+            args: --target universal-apple-darwin
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -57,6 +61,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-targets }}
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
@@ -75,12 +81,16 @@ jobs:
         working-directory: app
         run: |
           set -o pipefail
-          cargo tauri build --bundles ${{ matrix.bundles }} 2>&1 | tee -a "$RUNNER_TEMP/ci.log"
+          cargo tauri build --bundles ${{ matrix.bundles }} ${{ matrix.args }} 2>&1 | tee -a "$RUNNER_TEMP/ci.log"
       - name: Collect
         run: |
           mkdir out
-          find app/target/release/bundle -type f \( -name "*.deb" -o -name "*-setup.exe" \) -exec cp {} out/ \;
-          if [ "$RUNNER_OS" = Windows ]; then cp target/release/dbd.exe out/dbd-windows-x64.exe; else cp target/release/dbd out/dbd-linux-amd64; fi
+          find app/target -path "*release/bundle*" -type f \( -name "*.deb" -o -name "*-setup.exe" -o -name "*.dmg" \) -exec cp {} out/ \;
+          case "$RUNNER_OS" in
+            Windows) cp target/release/dbd.exe out/dbd-windows-x64.exe ;;
+            macOS) cp target/release/dbd out/dbd-macos-arm64 ;;
+            *) cp target/release/dbd out/dbd-linux-amd64 ;;
+          esac
           ls -la out
       - uses: actions/upload-artifact@v4
         with:

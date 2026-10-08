@@ -205,8 +205,41 @@ async fn browser_guest() {
     assert!(resp.starts_with(b"HTTP/1.1 200"));
     assert!(resp.ends_with(&body));
 
+    // What a phone needs to keep the page on its home screen.
+    let resp = http(port, format!("GET /{path}/manifest.webmanifest HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n"), b"").await;
+    let text = String::from_utf8_lossy(&resp).into_owned();
+    assert!(text.contains("\"display\":\"standalone\"") && text.contains(&format!("\"start_url\":\"/{path}\"")), "{text}");
+    let resp = http(port, format!("GET /{path} HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n"), b"").await;
+    assert!(String::from_utf8_lossy(&resp).contains("apple-mobile-web-app-capable"));
+
+    // The shared board through the browser: put a note and a file, read the list, take the file back.
+    let note = "from the phone";
+    let post = format!("POST /{path}/board/text HTTP/1.1\r\nHost: x\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", note.len());
+    assert!(http(port, post, note.as_bytes()).await.starts_with(b"HTTP/1.1 204"));
+    let put = format!("PUT /{path}/board/up/photo.jpg HTTP/1.1\r\nHost: x\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", body.len());
+    assert!(http(port, put, &body).await.starts_with(b"HTTP/1.1 204"));
+    assert_eq!(b.board(note)["kind"], "text");
+    assert_eq!(b.board("photo.jpg")["state"], "here");
+    assert_eq!(std::fs::read(b.dir.join("board/photo.jpg")).unwrap(), body);
+    let resp = http(port, format!("GET /{path}/board HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n"), b"").await;
+    let text = String::from_utf8_lossy(&resp).into_owned();
+    assert!(text.contains("from the phone") && text.contains("\"here\":true"), "{text}");
+    let id = b.board("photo.jpg")["id"].as_str().unwrap().to_string();
+    let resp = http(port, format!("GET /{path}/board/dl/{id} HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n"), b"").await;
+    assert!(resp.starts_with(b"HTTP/1.1 200") && resp.ends_with(&body));
+    // Taken off the board, the uploaded copy goes too.
+    b.call("board_remove", json!({ "id": id })).await;
+    until("uploaded copy removed", || !b.dir.join("board/photo.jpg").exists()).await;
+
     b.call("guest_stop", json!({})).await;
     assert!(b.snap()["guest"].is_null());
+    // Switched on again, the link is the same one, so a phone that saved it keeps working...
+    b.call("guest_start", json!({})).await;
+    assert!(b.snap()["guest"]["url"].as_str().unwrap().ends_with(path));
+    // ...until the user asks for a new one.
+    b.call("guest_reset", json!({})).await;
+    assert!(!b.snap()["guest"]["url"].as_str().unwrap().ends_with(path));
+    b.call("guest_stop", json!({})).await;
 }
 
 #[tokio::test(flavor = "multi_thread")]

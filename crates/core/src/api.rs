@@ -380,6 +380,7 @@ impl Core {
             // ---- browser guest
             "guest_start" => self.guest_start().await?,
             "guest_stop" => self.guest_stop(),
+            "guest_reset" => self.guest_reset(),
             "guest_share" => self.guest_share(paths(&args)),
 
             other => bail!("unknown command `{other}`"),

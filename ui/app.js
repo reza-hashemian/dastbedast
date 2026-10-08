@@ -61,7 +61,17 @@
     port: ['پورت', 'Port'],
     connect: ['وصل شو', 'Connect'],
     static_check: ['این آدرس ثابت است؛ از هر شبکه‌ای به آن وصل شو', 'This address is static; connect to it from any network'],
-    guest: ['مهمان مرورگر', 'Browser guest'],
+    guest: ['آیفون و مرورگر', 'iPhone and browser'],
+    phone_btn: ['نصب روی آیفون', 'Install on iPhone'],
+    phone_title: ['نصب روی آیفون', 'Install on iPhone'],
+    phone_intro: ['آیفون برنامهٔ جدا ندارد؛ از راه همین دستگاه کار می‌کند. به همین دستگاه فایل می‌فرستد و می‌گیرد و میز مشترک را می‌بیند.',
+      'The iPhone has no separate app; it works through this device. It sends files to this device, takes files from it, and sees the shared board.'],
+    phone_steps: [['آیفون را به همین شبکهٔ وای‌فای وصل کن.', 'با دوربین آیفون این کد را اسکن کن تا صفحه در Safari باز شود.', 'در Safari دکمهٔ Share را بزن و «Add to Home Screen» را انتخاب کن.'],
+      ['Connect the iPhone to this same Wi-Fi network.', 'Scan this code with the iPhone camera; the page opens in Safari.', 'In Safari tap Share and choose “Add to Home Screen”.']],
+    phone_note: ['تا وقتی این برنامه باز و این لینک روشن است کار می‌کند. اگر آی‌پی این دستگاه عوض شود، باید دوباره اسکن و نصب کنی.',
+      'It works while this app is open and this link is on. If this device’s IP address changes, scan and add it again.'],
+    phone_reset: ['لینک جدید', 'New link'],
+    phone_starting: ['در حال روشن‌کردن…', 'Turning on…'],
     paths_hint: ['در حالت مرورگر پنجرهٔ انتخاب فایل در دسترس نیست. مسیر کامل هر فایل یا پوشه را در یک خط بنویس.',
       'The file picker is not available in browser mode. Write the full path of each file or folder on its own line.'],
     paths_files: ['مسیر فایل‌ها', 'File paths'],
@@ -430,6 +440,20 @@
         '<div class="line end"><button type="button" class="btn" data-act="guest-share">' + esc(t('guest_share')) + '</button><button type="button" class="btn del" data-act="guest-stop">' + esc(t('guest_off')) + '</button></div></div>';
   }
 
+  function renderPhone() {
+    var dlg = $('dlg-phone');
+    if (!dlg.open) return;
+    var g = S.guest;
+    $('phone-body').innerHTML = '<div class="dlg-head"><h2>' + esc(t('phone_title')) + '</h2>' + xBtn() + '</div>' +
+      '<p class="hint">' + esc(t('phone_intro')) + '</p>' +
+      (!g ? '<p class="hint center">' + esc(t('phone_starting')) + '</p>'
+        : '<ol class="steps">' + t('phone_steps').map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol>' +
+          '<div class="qr">' + g.qr + '</div><p class="center">' + ltr(g.url) + '</p>' +
+          '<p class="hint">' + esc(t('phone_note')) + ' ' + esc(t('guest_warn')) + '</p>' +
+          '<div class="line end"><button type="button" class="btn" data-act="guest-reset" data-confirm="1">' + esc(t('phone_reset')) + '</button>' +
+          '<button type="button" class="btn del" data-act="guest-stop">' + esc(t('guest_off')) + '</button></div>');
+  }
+
   var peerOpen = null;
   function modeSeg(act, id, cur) {
     return '<div class="seg" role="group">' + ['default', 'ask', 'auto'].map(function (m) {
@@ -497,7 +521,7 @@
     document.body.classList.toggle('phone', S.me.kind === 'android');
     var want = S.settings.lang === 'en' ? 'en' : 'fa';
     if (want !== lang || !langApplied) { lang = want; langApplied = true; applyLang(); }
-    renderBar(); renderNets(); renderDevs(); renderBoard(); renderTransfers(); renderInbox(); renderPair(); renderNew(); renderPeer(false);
+    renderBar(); renderNets(); renderDevs(); renderBoard(); renderTransfers(); renderInbox(); renderPair(); renderNew(); renderPhone(); renderPeer(false);
   }
   function reload() { return call('snapshot').then(function (s) { S = s; render(); }); }
 
@@ -656,8 +680,10 @@
       return call('scan').then(function (r) { toast(r.found ? t('scan_found', num(r.found)) : t('scan_none')); })
         .finally(function () { b.disabled = false; b.textContent = t('scan'); });
     },
+    'phone': function () { $('dlg-phone').showModal(); renderPhone(); return call('guest_start'); },
+    'guest-reset': function () { return call('guest_reset'); },
     'guest-start': function () { return call('guest_start'); },
-    'guest-stop': function () { return call('guest_stop'); },
+    'guest-stop': function () { if ($('dlg-phone').open) $('dlg-phone').close(); return call('guest_stop'); },
     'guest-share': function () { return pick(false).then(function (p) { if (p.length) return call('guest_share', { paths: p }); }); },
     'peer': function (d) { peerOpen = d.id; renderPeer(true); },
     'peer-mode': function (d) { return call('set_peer_mode', { id: d.id, mode: d.mode }).then(reload).then(function () { renderPeer(true); }); },

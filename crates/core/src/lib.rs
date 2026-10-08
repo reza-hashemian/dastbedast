@@ -231,6 +231,11 @@ impl Core {
         tokio::spawn(async move { c.net_loop().await });
         let c = core.clone();
         tokio::spawn(async move { c.board_loop().await });
+        if core.cfg.lock().unwrap().guest_on {
+            if let Err(e) = core.guest_start().await {
+                eprintln!("browser link not started: {e:#}");
+            }
+        }
         if opts.discovery {
             if let Err(e) = discovery::spawn(core.clone()) {
                 eprintln!("discovery disabled: {e:#}");
@@ -613,6 +618,7 @@ impl Core {
                     None => None,
                 };
                 self.rt.lock().unwrap().net_suggest = suggest;
+                self.guest_refresh();
                 self.changed();
                 self.wake.notify_one();
             }

@@ -1,5 +1,9 @@
-//! Browser guest: a device without the app opens a link on the local network
-//! and can upload into the inbox or download what was put out for it.
+//! Browser guest: a device without the app opens a link on the local network and can send
+//! files to this device, take what was put out for it, and use the shared board.
+//!
+//! This is also how an iPhone takes part: the page can be added to the home screen and then
+//! opens like an app. A page in a browser cannot be a device of its own (it can neither listen
+//! nor open raw connections), so it always works through the device that serves it.
 //!
 //! The server only runs while the user has switched it on, and the link carries a random token.
 //! It is plain HTTP, meant for the local network only.
@@ -12,17 +16,22 @@ use axum::{
     extract::{DefaultBodyLimit, Path, State},
     http::{header, HeaderMap, StatusCode},
     response::{Html, IntoResponse, Response},
-    routing::{get, put},
+    routing::{get, post, put},
     Json, Router,
 };
 use futures_util::StreamExt;
 use serde_json::{json, Value};
 use tokio::{io::AsyncWriteExt, net::TcpListener, sync::oneshot};
 
-use crate::{i18n::tr, model::InboxItem, new_id, now, unique_path, Core};
+use crate::{
+    i18n::tr,
+    model::{BoardEntry, BoardLocal, InboxItem},
+    new_id, now, unique_path, Core,
+};
 
 pub(crate) struct Guest {
     pub token: String,
+    port: u16,
     pub url: String,
     pub qr: String,
     pub shared: Vec<PathBuf>,
@@ -30,6 +39,7 @@ pub(crate) struct Guest {
 }
 
 const PAGE: &str = include_str!("guest.html");
+const ICON: &[u8] = include_bytes!("guest-icon.png");
 
 fn qr_svg(text: &str) -> String {
     qrcode::QrCode::new(text.as_bytes())
@@ -41,22 +51,37 @@ fn pct(name: &str) -> String {
     name.bytes().map(|b| if b.is_ascii_alphanumeric() || b"-_.".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") }).collect()
 }
 
+fn guest_name() -> String {
+    tr!("مهمان مرورگر", "Browser guest")
+}
+
 impl Core {
     pub async fn guest_start(&self) -> Result<()> {
         if self.rt.lock().unwrap().guest.is_some() {
             return Ok(());
         }
-        let port = self.cfg.lock().unwrap().guest_port;
+        let (port, token) = {
+            let mut cfg = self.cfg.lock().unwrap();
+            if cfg.guest_token.is_empty() {
+                cfg.guest_token = new_id();
+            }
+            cfg.guest_on = true;
+            cfg.save(&self.dir);
+            (cfg.guest_port, cfg.guest_token.clone())
+        };
         let listener = TcpListener::bind(("0.0.0.0", port)).await.with_context(|| tr!("پورت {} در دسترس نیست", "Port {} is not available", port))?;
         let port = listener.local_addr()?.port();
-        let ip = self.rt.lock().unwrap().net.as_ref().map(|n| n.local_ip.to_string()).unwrap_or_else(|| "127.0.0.1".into());
-        let token = new_id();
-        let url = format!("http://{ip}:{port}/g/{token}");
         let app = Router::new()
             .route("/g/:token", get(page))
+            .route("/g/:token/manifest.webmanifest", get(manifest))
+            .route("/g/:token/icon.png", get(icon))
             .route("/g/:token/list", get(list))
             .route("/g/:token/dl/:idx", get(download))
             .route("/g/:token/up/:name", put(upload))
+            .route("/g/:token/board", get(board_list))
+            .route("/g/:token/board/text", post(board_text))
+            .route("/g/:token/board/up/:name", put(board_upload))
+            .route("/g/:token/board/dl/:id", get(board_download))
             .layer(DefaultBodyLimit::disable())
             .with_state(self.clone());
         let (stop, stopped) = oneshot::channel::<()>();
@@ -67,9 +92,23 @@ impl Core {
                 })
                 .await;
         });
-        self.rt.lock().unwrap().guest = Some(Guest { token, qr: qr_svg(&url), url, shared: vec![], stop: Some(stop) });
+        self.rt.lock().unwrap().guest = Some(Guest { token, port, url: String::new(), qr: String::new(), shared: vec![], stop: Some(stop) });
+        self.guest_refresh();
         self.changed();
         Ok(())
+    }
+
+    /// The link shows this device's current address; it is rebuilt when the network changes.
+    pub(crate) fn guest_refresh(&self) {
+        let mut rt = self.rt.lock().unwrap();
+        let ip = rt.net.as_ref().map(|n| n.local_ip.to_string()).unwrap_or_else(|| "127.0.0.1".into());
+        if let Some(g) = rt.guest.as_mut() {
+            let url = format!("http://{ip}:{}/g/{}", g.port, g.token);
+            if url != g.url {
+                g.qr = qr_svg(&url);
+                g.url = url;
+            }
+        }
     }
 
     pub fn guest_stop(&self) {
@@ -78,6 +117,27 @@ impl Core {
                 let _ = stop.send(());
             }
         }
+        {
+            let mut cfg = self.cfg.lock().unwrap();
+            cfg.guest_on = false;
+            cfg.save(&self.dir);
+        }
+        self.changed();
+    }
+
+    /// Replaces the link. Every phone that saved the old one loses access.
+    pub fn guest_reset(&self) {
+        let token = new_id();
+        {
+            let mut cfg = self.cfg.lock().unwrap();
+            cfg.guest_token = token.clone();
+            cfg.save(&self.dir);
+        }
+        if let Some(g) = self.rt.lock().unwrap().guest.as_mut() {
+            g.token = token;
+            g.url.clear();
+        }
+        self.guest_refresh();
         self.changed();
     }
 
@@ -98,19 +158,46 @@ impl Core {
     }
 }
 
+fn not_found() -> Response {
+    StatusCode::NOT_FOUND.into_response()
+}
+
 async fn page(State(core): State<Core>, Path(token): Path<String>) -> Response {
     if !core.guest_ok(&token) {
-        return StatusCode::NOT_FOUND.into_response();
+        return not_found();
     }
     let name = core.info().name.replace('&', "&amp;").replace('<', "&lt;");
     let lang = if crate::i18n::en() { "en" } else { "fa" };
-    Html(PAGE.replace("{{HOST}}", &name).replace("{{LANG}}", lang)).into_response()
+    let html = PAGE.replace("{{HOST}}", &name).replace("{{LANG}}", lang).replace("{{TOKEN}}", &token);
+    ([(header::CACHE_CONTROL, "no-cache")], Html(html)).into_response()
+}
+
+/// Lets a phone add the page to its home screen as an app.
+async fn manifest(State(core): State<Core>, Path(token): Path<String>) -> Response {
+    if !core.guest_ok(&token) {
+        return not_found();
+    }
+    let name = if crate::i18n::en() { "DastBeDast" } else { "دست‌به‌دست" };
+    let body = json!({
+        "name": name, "short_name": name,
+        "start_url": format!("/g/{token}"), "scope": format!("/g/{token}"),
+        "display": "standalone", "background_color": "#EDF1F4", "theme_color": "#0A7486",
+        "icons": [{ "src": format!("/g/{token}/icon.png"), "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }],
+    });
+    ([(header::CONTENT_TYPE, "application/manifest+json")], body.to_string()).into_response()
+}
+
+async fn icon(State(core): State<Core>, Path(token): Path<String>) -> Response {
+    if !core.guest_ok(&token) {
+        return not_found();
+    }
+    ([(header::CONTENT_TYPE, "image/png"), (header::CACHE_CONTROL, "max-age=86400")], ICON).into_response()
 }
 
 async fn list(State(core): State<Core>, Path(token): Path<String>) -> Response {
     let rt = core.rt.lock().unwrap();
     let Some(g) = rt.guest.as_ref().filter(|g| g.token == token) else {
-        return StatusCode::NOT_FOUND.into_response();
+        return not_found();
     };
     let files: Vec<Value> = g
         .shared
@@ -127,12 +214,9 @@ async fn list(State(core): State<Core>, Path(token): Path<String>) -> Response {
     Json(files).into_response()
 }
 
-async fn download(State(core): State<Core>, Path((token, idx)): Path<(String, usize)>) -> Response {
-    let path = core.rt.lock().unwrap().guest.as_ref().filter(|g| g.token == token).and_then(|g| g.shared.get(idx).cloned());
-    let Some(path) = path else { return StatusCode::NOT_FOUND.into_response() };
-    let Ok(file) = tokio::fs::File::open(&path).await else { return StatusCode::NOT_FOUND.into_response() };
+async fn send_file(path: PathBuf, name: String) -> Response {
+    let Ok(file) = tokio::fs::File::open(&path).await else { return not_found() };
     let len = file.metadata().await.map(|m| m.len()).unwrap_or(0);
-    let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
     let mut headers = HeaderMap::new();
     headers.insert(header::CONTENT_TYPE, "application/octet-stream".parse().expect("static"));
     headers.insert(header::CONTENT_LENGTH, len.into());
@@ -142,18 +226,22 @@ async fn download(State(core): State<Core>, Path((token, idx)): Path<(String, us
     (headers, Body::from_stream(tokio_util::io::ReaderStream::with_capacity(file, 1 << 18))).into_response()
 }
 
-async fn upload(State(core): State<Core>, Path((token, name)): Path<(String, String)>, body: Body) -> Response {
-    if !core.guest_ok(&token) {
-        return StatusCode::NOT_FOUND.into_response();
-    }
+async fn download(State(core): State<Core>, Path((token, idx)): Path<(String, usize)>) -> Response {
+    let path = core.rt.lock().unwrap().guest.as_ref().filter(|g| g.token == token).and_then(|g| g.shared.get(idx).cloned());
+    let Some(path) = path else { return not_found() };
+    let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+    send_file(path, name).await
+}
+
+/// Stores an uploaded body in `dir` under a safe version of `name`. Returns where it ended up.
+async fn store_upload(dir: PathBuf, name: &str, body: Body) -> Option<(PathBuf, String, u64)> {
     // Only the last path component, with characters no filesystem accepts replaced.
     let name: String = name.rsplit(['/', '\\']).next().unwrap_or("").chars().map(|c| if c.is_control() || "<>:\"|?*".contains(c) { '_' } else { c }).collect();
     let name = name.trim().trim_matches('.').to_string();
     if name.is_empty() {
-        return StatusCode::BAD_REQUEST.into_response();
+        return None;
     }
-    let inbox = PathBuf::from(core.cfg.lock().unwrap().inbox_dir.clone());
-    let tmp_dir = inbox.join(".partial");
+    let tmp_dir = dir.join(".partial");
     let tmp = tmp_dir.join(format!("guest-{}", new_id()));
     let res: Result<u64> = async {
         tokio::fs::create_dir_all(&tmp_dir).await?;
@@ -169,20 +257,28 @@ async fn upload(State(core): State<Core>, Path((token, name)): Path<(String, Str
         Ok(size)
     }
     .await;
-    let size = match res {
-        Ok(size) => size,
-        Err(_) => {
-            let _ = tokio::fs::remove_file(&tmp).await;
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    let dest = unique_path(&dir, &name);
+    match res {
+        Ok(size) if tokio::fs::rename(&tmp, &dest).await.is_ok() => {
+            let shown = dest.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or(name);
+            Some((dest, shown, size))
         }
-    };
-    let dest = unique_path(&inbox, &name);
-    if tokio::fs::rename(&tmp, &dest).await.is_err() {
-        let _ = tokio::fs::remove_file(&tmp).await;
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        _ => {
+            let _ = tokio::fs::remove_file(&tmp).await;
+            None
+        }
     }
-    let shown = dest.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or(name);
-    let guest = tr!("مهمان مرورگر", "Browser guest");
+}
+
+async fn upload(State(core): State<Core>, Path((token, name)): Path<(String, String)>, body: Body) -> Response {
+    if !core.guest_ok(&token) {
+        return not_found();
+    }
+    let inbox = PathBuf::from(core.cfg.lock().unwrap().inbox_dir.clone());
+    let Some((dest, shown, size)) = store_upload(inbox, &name, body).await else {
+        return StatusCode::BAD_REQUEST.into_response();
+    };
+    let guest = guest_name();
     core.add_inbox(vec![InboxItem {
         id: new_id(),
         name: shown.clone(),
@@ -196,4 +292,69 @@ async fn upload(State(core): State<Core>, Path((token, name)): Path<(String, Str
     core.emit(json!({ "type": "received", "from": guest, "name": shown }));
     core.changed();
     StatusCode::NO_CONTENT.into_response()
+}
+
+// ---------------------------------------------------------------- the shared board, for the guest
+
+async fn board_list(State(core): State<Core>, Path(token): Path<String>) -> Response {
+    if !core.guest_ok(&token) {
+        return not_found();
+    }
+    let cfg = core.cfg.lock().unwrap();
+    let items: Vec<Value> = cfg
+        .board
+        .iter()
+        .rev()
+        .filter(|e| e.item.gone == 0)
+        .map(|e| {
+            let it = &e.item;
+            let from = cfg.peers.iter().find(|p| p.id == it.from).map(|p| p.name.clone()).unwrap_or_else(|| it.from_name.clone());
+            // A browser takes single files, and only those this device holds itself.
+            let here = it.kind == "file" && e.local.as_ref().is_some_and(|l| std::path::Path::new(&l.path).is_file());
+            json!({ "id": it.id, "kind": it.kind, "name": it.name, "text": it.text, "size": it.size, "files": it.files, "from": from, "at": it.at, "here": here })
+        })
+        .collect();
+    Json(items).into_response()
+}
+
+async fn board_text(State(core): State<Core>, Path(token): Path<String>, text: String) -> Response {
+    if !core.guest_ok(&token) {
+        return not_found();
+    }
+    match core.board_text(&text) {
+        Ok(()) => StatusCode::NO_CONTENT.into_response(),
+        Err(e) => (StatusCode::BAD_REQUEST, e.to_string()).into_response(),
+    }
+}
+
+async fn board_upload(State(core): State<Core>, Path((token, name)): Path<(String, String)>, body: Body) -> Response {
+    if !core.guest_ok(&token) {
+        return not_found();
+    }
+    let dir = PathBuf::from(core.cfg.lock().unwrap().board_dir.clone());
+    let Some((dest, shown, size)) = store_upload(dir, &name, body).await else {
+        return StatusCode::BAD_REQUEST.into_response();
+    };
+    let mut item = core.board_item("file", shown, String::new(), size, 1);
+    item.from_name = format!("{} ({})", guest_name(), item.from_name);
+    // The copy belongs to the board: it goes when the item is taken off.
+    let entry = BoardEntry { item, local: Some(BoardLocal { path: dest.to_string_lossy().into_owned(), own: false, kept: false }) };
+    match core.board_add(vec![entry]) {
+        Ok(()) => StatusCode::NO_CONTENT.into_response(),
+        Err(e) => {
+            let _ = tokio::fs::remove_file(&dest).await;
+            (StatusCode::BAD_REQUEST, e.to_string()).into_response()
+        }
+    }
+}
+
+async fn board_download(State(core): State<Core>, Path((token, id)): Path<(String, String)>) -> Response {
+    if !core.guest_ok(&token) {
+        return not_found();
+    }
+    let found = core.cfg.lock().unwrap().board.iter().find(|e| e.item.id == id && e.item.gone == 0).and_then(|e| Some((PathBuf::from(&e.local.as_ref()?.path), e.item.name.clone())));
+    match found {
+        Some((path, name)) if path.is_file() => send_file(path, name).await,
+        _ => not_found(),
+    }
 }

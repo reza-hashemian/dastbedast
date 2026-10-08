@@ -178,7 +178,7 @@ impl Core {
         self.board_auto();
     }
 
-    fn board_add(&self, entries: Vec<BoardEntry>) -> Result<()> {
+    pub(crate) fn board_add(&self, entries: Vec<BoardEntry>) -> Result<()> {
         {
             let mut cfg = self.cfg.lock().unwrap();
             let live = cfg.board.iter().filter(|e| e.item.gone == 0).count();
@@ -199,7 +199,7 @@ impl Core {
         Ok(())
     }
 
-    fn board_item(&self, kind: &str, name: String, text: String, size: u64, files: usize) -> BoardItem {
+    pub(crate) fn board_item(&self, kind: &str, name: String, text: String, size: u64, files: usize) -> BoardItem {
         BoardItem { id: new_id(), kind: kind.into(), name, text, size, files, from: self.id.clone(), from_name: self.info().name, at: now(), gone: 0 }
     }
 

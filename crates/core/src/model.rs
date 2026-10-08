@@ -101,6 +101,10 @@ pub struct Config {
     pub name: String,
     pub port: u16,
     pub guest_port: u16,
+    /// The browser link is switched on; it comes back by itself after a restart.
+    pub guest_on: bool,
+    /// The secret part of the browser link. It stays the same so that a phone that saved the page keeps working.
+    pub guest_token: String,
     /// "fa" | "en"
     pub lang: String,
     pub inbox_dir: String,
@@ -127,6 +131,8 @@ impl Default for Config {
             name: String::new(),
             port: DEFAULT_PORT,
             guest_port: DEFAULT_GUEST_PORT,
+            guest_on: false,
+            guest_token: String::new(),
             lang: "fa".into(),
             inbox_dir: base.join("Inbox").to_string_lossy().into_owned(),
             board_dir: base.join("Board").to_string_lossy().into_owned(),
