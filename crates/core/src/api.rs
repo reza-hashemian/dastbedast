@@ -216,6 +216,12 @@ impl Core {
             "list_dir" => {
                 let asked = args.get("path").and_then(Value::as_str).unwrap_or_default().trim();
                 let mut dir = if asked.is_empty() { browse_root() } else { PathBuf::from(asked) };
+                // A phone's shared storage is the only place worth browsing: above it there is nothing an app
+                // may see, and beside it only the app's own hidden folders.
+                let floor = cfg!(target_os = "android").then(browse_root);
+                if floor.as_ref().is_some_and(|f| !dir.starts_with(f)) {
+                    dir = browse_root();
+                }
                 while !dir.is_dir() {
                     match dir.parent() {
                         Some(p) => dir = p.to_path_buf(),
@@ -229,7 +235,8 @@ impl Core {
                     .map(|rd| rd.flatten().filter(|e| e.path().is_dir()).map(|e| e.file_name().to_string_lossy().into_owned()).filter(|n| !n.starts_with('.')).collect())
                     .unwrap_or_default();
                 dirs.sort_by_key(|n| n.to_lowercase());
-                return Ok(json!({ "path": dir, "parent": dir.parent(), "dirs": dirs }));
+                let parent = if floor.as_ref() == Some(&dir) { None } else { dir.parent() };
+                return Ok(json!({ "path": dir, "parent": parent, "dirs": dirs }));
             }
             "make_dir" => {
                 let name = text(&args, "name")?.trim().to_string();

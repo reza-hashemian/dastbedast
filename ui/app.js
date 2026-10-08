@@ -201,6 +201,10 @@
     all_files_hint: ['برای دیدن و انتخاب هر پوشه‌ای از حافظهٔ گوشی، برنامه به «دسترسی به همهٔ فایل‌ها» نیاز دارد. بدون آن فقط پوشهٔ Download در دسترس است.',
       'To see and choose any folder on the phone, the app needs “All files access”. Without it only the Download folder is available.'],
     all_files_btn: ['دادن دسترسی', 'Grant access'],
+    store_hint: ['فایل‌های دریافتی الان داخل خودِ برنامه می‌مانند و در فایل‌منیجر گوشی دیده نمی‌شوند.', 'Received files currently stay inside the app and do not show in the phone’s file manager.'],
+    store_btn: ['ذخیره در پوشهٔ Download', 'Save to the Download folder'],
+    store_done: ['فایل‌ها از این به بعد در Download/DastBeDast ذخیره می‌شوند', 'Files are now saved in Download/DastBeDast'],
+    store_denied: ['بدون این دسترسی نمی‌شود در حافظهٔ گوشی ذخیره کرد', 'Without this access nothing can be saved to the phone’s storage'],
     cant_open: ['برنامه‌ای برای باز کردن این پیدا نشد: {0}', 'No app could open this: {0}'],
     ev_received: ['«{0}» از {1} رسید', '“{0}” arrived from {1}'],
     ev_incoming: ['{0} می‌خواهد فایل بفرستد', '{0} wants to send files']
@@ -391,7 +395,9 @@
     $('mode-hint').textContent = hint;
     $('inbox-dir').textContent = s.inbox_dir;
 
-    $('offers').innerHTML = S.offers.map(function (o) {
+    // A phone that refused the app its Download folder at first start keeps files where no file manager shows them.
+    var hidden = A && s.inbox_dir.indexOf('/storage/') !== 0;
+    $('offers').innerHTML = (hidden ? '<div class="ask"><span>' + esc(t('store_hint')) + '</span><span class="acts"><button type="button" class="btn go" data-act="store-public">' + esc(t('store_btn')) + '</button></span></div>' : '') + S.offers.map(function (o) {
       var what = (o.count > 1 ? t('n_files', num(o.count)) + sep() : '') + size(o.total);
       return '<div class="ask"><span>' + t('offer_one', esc(o.peer), esc(o.name), esc(what)) + '</span>' +
         '<span class="acts"><button type="button" class="btn go" data-act="offer" data-ok="1" data-id="' + esc(o.id) + '">' + esc(t('accept')) + '</button>' +
@@ -601,6 +607,21 @@
   // Coming back from the system's permission screen, the folder list may have grown.
   document.addEventListener('visibilitychange', function () { if (!document.hidden && $('dlg-dir').open && dirState) run(loadDir(dirState.path)); });
 
+  // Asks the phone for storage access and resolves once it is given; the answer comes from a system screen, so it is polled for.
+  function storageAccess() {
+    if (A.allFiles()) return Promise.resolve(true);
+    A.askAllFiles();
+    return new Promise(function (resolve) {
+      var tries = 0, timer = setInterval(function () {
+        if (A.allFiles() || ++tries > 120) { clearInterval(timer); resolve(A.allFiles()); }
+      }, 500);
+    });
+  }
+  function usePublicDirs() {
+    var base = '/storage/emulated/0/Download/DastBeDast/';
+    return call('set_dirs', { inbox_dir: base + 'Inbox', keep_dir: base + 'Files', board_dir: base + 'Board' }).then(function () { toast(t('store_done')); });
+  }
+
   // Opens a received file, or the folder it is in.
   function openItem(cmd, d, path) {
     if (!A) return call(cmd, { id: d.id, folder: !!d.folder });
@@ -667,7 +688,13 @@
       $('dlg-dir').close();
       if (done) done(path);
     },
-    'all-files': function () { A.askAllFiles(); },
+    'all-files': function () { return storageAccess().then(function () { if ($('dlg-dir').open && dirState) return loadDir(dirState.path); }); },
+    // Newer phones let an app write to Download as it is; older ones need the permission first.
+    'store-public': function () {
+      return usePublicDirs().catch(function () {
+        return storageAccess().then(function (ok) { if (!ok) throw new Error(t('store_denied')); return usePublicDirs(); });
+      });
+    },
     'pair': function (d) { return call('pair_decide', { id: d.id, ok: !!d.ok }); },
     'pair-nearby': function (d) { return call('pair_nearby', { id: d.id }); },
     'pair-addr': function () {
