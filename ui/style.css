@@ -84,7 +84,7 @@ button:disabled{opacity:.5;cursor:default}
 .row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:9px 0;border-top:1px solid var(--line);line-height:1.6;align-items:center}
 .row:first-child{border-top:0}
 .row .nm{font-size:.9rem;font-weight:500;overflow-wrap:anywhere}
-.row .meta{font-size:.76rem;color:var(--muted);grid-column:1}
+.row .meta{font-size:.76rem;color:var(--muted);grid-column:1;overflow-wrap:anywhere;min-width:0}
 .row .meta.bad{color:var(--danger)}
 .row .act{grid-row:1 / span 2;grid-column:2;display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .row .prog{grid-column:1 / -1}
@@ -98,14 +98,22 @@ button:disabled{opacity:.5;cursor:default}
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:2px 12px;font-size:.82rem;font-weight:700;white-space:nowrap}
 .btn:not(:disabled):hover{border-color:var(--accent)}
 .btn.go{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-.btn.del{color:var(--danger)}
+/* Buttons that delete: a bin and a red edge. The second, confirming press turns the whole button red. */
+.btn.del,.btn.warn{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 40%,var(--line))}
+.btn.del{display:inline-flex;align-items:center;gap:6px}
+.btn.del::before{content:"";width:14px;height:14px;flex:none;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3'/%3E%3C/svg%3E") center/contain no-repeat}
+.btn.del:not(:disabled):hover,.btn.warn:not(:disabled):hover{border-color:var(--danger);background:color-mix(in srgb,var(--danger) 10%,var(--surface))}
+.btn[data-armed],.btn[data-armed]:hover{background:var(--danger)!important;border-color:var(--danger)!important;color:#fff!important}
+.btn.unlist{color:var(--muted)}
+.xrow{background:none;border:0;color:var(--muted);font-size:1.25rem;line-height:1;width:28px;height:28px;border-radius:50%;padding:0}
+.xrow:hover{background:var(--sunk);color:var(--danger)}
 .btn.big{padding:6px 18px;font-size:.92rem}
 
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line);border-radius:9px;padding:3px;gap:3px;background:var(--sunk)}
 .seg button{border:0;background:none;border-radius:6px;font-size:.82rem;font-weight:700;padding:3px 6px}
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
 
-.ask{border:1px solid var(--wait);background:var(--wait-soft);border-radius:var(--r);padding:10px 12px;display:flex;flex-direction:column;gap:8px;font-size:.88rem;line-height:1.7;margin-bottom:8px}
+.ask{overflow-wrap:anywhere;min-width:0;border:1px solid var(--wait);background:var(--wait-soft);border-radius:var(--r);padding:10px 12px;display:flex;flex-direction:column;gap:8px;font-size:.88rem;line-height:1.7;margin-bottom:8px}
 .ask .acts{display:flex;gap:8px}
 
 /* dialogs */
@@ -127,7 +135,7 @@ textarea{resize:vertical;width:100%}
 .center{text-align:center}
 
 .toasts{position:fixed;inset-inline:0;bottom:16px;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;z-index:10}
-.toast{background:var(--ink);color:var(--bg);border-radius:99px;padding:4px 18px;font-size:.86rem;max-width:calc(100vw - 32px)}
+.toast{background:var(--ink);color:var(--bg);border-radius:16px;padding:5px 18px;font-size:.86rem;max-width:calc(100vw - 32px);overflow-wrap:anywhere;text-align:center}
 .toast.err{background:var(--danger);color:#fff}
 
 @media (max-width:900px){
@@ -150,6 +158,7 @@ textarea{resize:vertical;width:100%}
 .board .row .nm.txt{white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;user-select:text;-webkit-user-select:text;font-weight:400}
 .board .row .nm.txt.link{direction:ltr;text-align:start;unicode-bidi:plaintext;color:var(--accent)}
 @media (max-width:560px){
+  .board .line input{flex-basis:100%}
   .board .row{grid-template-columns:minmax(0,1fr)}
   .board .row .act{grid-row:auto;grid-column:1;justify-content:flex-start;margin-top:4px}
 }
@@ -171,3 +180,7 @@ button.nm.open:hover{color:var(--accent);text-decoration:underline}
 .dir svg{width:20px;height:20px;flex:none;color:var(--accent)}
 .dir.up{color:var(--muted);font-size:.86rem}
 .dir bdi{overflow-wrap:anywhere;min-width:0}
+
+/* Long names never push a box wider than the screen. */
+.dlg h2,.dlg .hint,.net b,.me,.netchip{overflow-wrap:anywhere;min-width:0}
+.ask .acts{flex-wrap:wrap}

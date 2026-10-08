@@ -120,6 +120,7 @@
     st_waiting: ['قطع شد؛ با برگشتن دستگاه خودکار ادامه پیدا می‌کند', 'interrupted; continues by itself when the device is back'],
     transfers_empty: ['برای فرستادن، روی یک دستگاهِ وصل بزن.', 'To send, press a connected device.'],
     cancel: ['لغو', 'Cancel'],
+    remove_row: ['برداشتن از فهرست', 'Remove from the list'],
     sent: ['فرستاده شد', 'Sent'], arrived: ['رسید', 'Received'], rejected: ['رد شد', 'Declined'], cancelled: ['لغو شد', 'Cancelled'], failed: ['ناموفق', 'Failed'],
 
     hint_auto: ['فایل دستگاه‌های جفت‌شده بدون پرسش وارد صندوق می‌شود.', 'Files from paired devices go into the inbox without asking.'],
@@ -389,10 +390,11 @@
     $('transfers').innerHTML = S.transfers.map(function (x) {
       var pct = x.total ? Math.min(100, x.done / x.total * 100) : (x.state === 'done' ? 100 : 0);
       var act = RUNNING[x.state] ? '<button type="button" class="btn" data-act="cancel" data-id="' + esc(x.id) + '">' + esc(t('cancel')) + '</button>'
-        : x.state === 'done' ? '<span class="pill ok">' + esc(t(x.outgoing ? 'sent' : 'arrived')) + '</span>'
+        : (x.state === 'done' ? '<span class="pill ok">' + esc(t(x.outgoing ? 'sent' : 'arrived')) + '</span>'
         : x.state === 'rejected' ? '<span class="pill wait">' + esc(t('rejected')) + '</span>'
         : x.state === 'cancelled' ? '<span class="pill">' + esc(t('cancelled')) + '</span>'
-        : '<span class="pill bad">' + esc(t('failed')) + '</span>';
+        : '<span class="pill bad">' + esc(t('failed')) + '</span>') +
+          '<button type="button" class="xrow" data-act="transfer-remove" data-id="' + esc(x.id) + '" aria-label="' + esc(t('remove_row')) + '" title="' + esc(t('remove_row')) + '">×</button>';
       return '<div class="row"><span class="nm">' + esc(x.name) + '</span><span class="meta' + (x.state === 'failed' ? ' bad' : '') + '" id="tm-' + esc(x.id) + '">' + transferMeta(x) +
         '</span><span class="act">' + act + '</span>' +
         (x.state === 'active' || x.state === 'waiting' ? '<span class="prog"><i id="tp-' + esc(x.id) + '" style="width:' + pct.toFixed(1) + '%"></i></span>' : '') + '</div>';
@@ -412,7 +414,7 @@
     var hidden = A && s.inbox_dir.indexOf('/storage/') !== 0;
     $('offers').innerHTML = (hidden ? '<div class="ask"><span>' + esc(t('store_hint')) + '</span><span class="acts"><button type="button" class="btn go" data-act="store-public">' + esc(t('store_btn')) + '</button></span></div>' : '') + S.offers.map(function (o) {
       var what = (o.count > 1 ? t('n_files', num(o.count)) + sep() : '') + size(o.total);
-      return '<div class="ask"><span>' + t('offer_one', esc(o.peer), esc(o.name), esc(what)) + '</span>' +
+      return '<div class="ask"><span>' + t('offer_one', '<bdi>' + esc(o.peer) + '</bdi>', '<bdi>' + esc(o.name) + '</bdi>', esc(what)) + '</span>' +
         '<span class="acts"><button type="button" class="btn go" data-act="offer" data-ok="1" data-id="' + esc(o.id) + '">' + esc(t('accept')) + '</button>' +
         '<button type="button" class="btn" data-act="offer" data-id="' + esc(o.id) + '">' + esc(t('decline')) + '</button></span></div>';
     }).join('');
@@ -421,8 +423,8 @@
     $('inbox').innerHTML = S.inbox.length ? S.inbox.map(function (i) {
       var id = esc(i.id), kept = i.state === 'kept';
       var meta = i.missing ? esc(t('missing')) : dots([size(i.size), i.files > 1 && esc(t('n_files', num(i.files))), esc(t('from', i.from)), esc(kept ? t('kept') : ago(i.at))]);
-      var act = i.missing ? btn('', 'inbox-del', id, 'unlist')
-        : kept ? btn('', 'inbox-open', id, 'show_folder', ' data-folder="1"') + btn('', 'inbox-del', id, 'unlist')
+      var act = i.missing ? btn(' unlist', 'inbox-del', id, 'unlist')
+        : kept ? btn('', 'inbox-open', id, 'show_folder', ' data-folder="1"') + btn(' unlist', 'inbox-del', id, 'unlist')
         : btn(' go', 'inbox-keep', id, 'keep') + btn('', 'inbox-open', id, 'open') + btn('', 'inbox-open', id, 'show_folder', ' data-folder="1"') + btn(' del', 'inbox-del', id, 'del', ' data-confirm="1"');
       var nm = i.missing ? '<span class="nm">' + esc(i.name) + '</span>' : '<button type="button" class="nm open" data-act="inbox-open" data-id="' + id + '">' + esc(i.name) + '</button>';
       return '<div class="row">' + nm + '<span class="meta">' + meta + '</span><span class="act">' + act + '</span></div>';
@@ -456,7 +458,7 @@
       : '<div class="dlg" style="padding:0"><div class="qr">' + g.qr + '</div><p class="center">' + ltr(g.url) + '</p>' +
         '<p class="hint center">' + esc(t('guest_warn')) + '</p>' +
         (g.shared.length ? '<p class="hint">' + esc(t('guest_shared', g.shared.join(sep()))) + '</p>' : '') +
-        '<div class="line end"><button type="button" class="btn" data-act="guest-share">' + esc(t('guest_share')) + '</button><button type="button" class="btn del" data-act="guest-stop">' + esc(t('guest_off')) + '</button></div></div>';
+        '<div class="line end"><button type="button" class="btn" data-act="guest-share">' + esc(t('guest_share')) + '</button><button type="button" class="btn warn" data-act="guest-stop">' + esc(t('guest_off')) + '</button></div></div>';
   }
 
   function renderPhone() {
@@ -470,7 +472,7 @@
           '<div class="qr">' + g.qr + '</div><p class="center">' + ltr(g.url) + '</p>' +
           '<p class="hint">' + esc(t('phone_note')) + ' ' + esc(t('guest_warn')) + '</p>' +
           '<div class="line end"><button type="button" class="btn" data-act="guest-reset" data-confirm="1">' + esc(t('phone_reset')) + '</button>' +
-          '<button type="button" class="btn del" data-act="guest-stop">' + esc(t('guest_off')) + '</button></div>');
+          '<button type="button" class="btn warn" data-act="guest-stop">' + esc(t('guest_off')) + '</button></div>');
   }
 
   var peerOpen = null;
@@ -668,6 +670,7 @@
     'send-folder': function (d) { return send(d.id, true); },
     'cancel': function (d) { return call('cancel', { id: d.id }); },
     'clear-transfers': function () { return call('clear_transfers'); },
+    'transfer-remove': function (d) { return call('remove_transfer', { id: d.id }); },
     'offer': function (d) { return call('offer_decide', { id: d.id, ok: !!d.ok }); },
     'inbox-keep': function (d) { return call('inbox_keep', { id: d.id }); },
     'inbox-open': function (d) { return openItem('inbox_open', d, (S.inbox.filter(function (i) { return i.id === d.id; })[0] || {}).path); },

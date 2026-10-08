@@ -348,6 +348,11 @@ impl Core {
             "send" => return Ok(json!({ "id": self.send(&text(&args, "peer")?, paths(&args)).await? })),
             "cancel" => self.cancel(&text(&args, "id")?),
             "offer_decide" => self.offer_decide(&text(&args, "id")?, flag(&args, "ok")),
+            "remove_transfer" => {
+                let id = text(&args, "id")?;
+                self.rt.lock().unwrap().transfers.retain(|t| t.id != id || matches!(t.state, "connecting" | "asking" | "active" | "waiting"));
+                self.changed();
+            }
             "clear_transfers" => {
                 self.rt.lock().unwrap().transfers.retain(|t| matches!(t.state, "connecting" | "asking" | "active" | "waiting"));
                 self.changed();
