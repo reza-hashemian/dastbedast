@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>راهنمای دست‌به‌دست</title>
+<style>
+@font-face{font-family:"Vazirmatn";src:url("../ui/fonts/vazirmatn.woff2") format("woff2");font-weight:100 900;font-display:swap}
+:root{
+  --bg:#EDF1F4; --surface:#FAFCFD; --sunk:#E1E8ED; --line:#CBD6DD;
+  --ink:#12232E; --muted:#526773;
+  --accent:#0A7486; --accent-ink:#FFFFFF; --accent-soft:#D3EAEE;
+  --wait:#A96A00; --wait-soft:#F6E6C4;
+  --body:"Vazirmatn",Tahoma,"Segoe UI",sans-serif;
+  --mono:ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){ :root{
+  --bg:#0D181E; --surface:#15252E; --sunk:#0F1D24; --line:#2A3F4B;
+  --ink:#E4EEF2; --muted:#93A8B3;
+  --accent:#45BFD2; --accent-ink:#06222A; --accent-soft:#143A44;
+  --wait:#E8B24A; --wait-soft:#3B2F12;
+  color-scheme:dark } }
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:16px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.95}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.page{max-width:1040px;margin:0 auto;padding:28px 16px 64px;display:grid;grid-template-columns:220px minmax(0,1fr);gap:32px;align-items:start}
+header{grid-column:1/-1;border-bottom:1px solid var(--line);padding-bottom:20px}
+header h1{margin:0;font-size:2rem;font-weight:800;line-height:1.5}
+header p{margin:4px 0 0;color:var(--muted);max-width:60ch}
+nav{position:sticky;top:16px;display:flex;flex-direction:column;gap:2px;font-size:.9rem}
+nav a{text-decoration:none;color:var(--muted);padding:4px 10px;border-radius:8px;border-inline-start:2px solid transparent}
+nav a:hover{color:var(--ink);background:var(--sunk)}
+main{display:flex;flex-direction:column;gap:36px;min-width:0}
+section h2{margin:0 0 8px;font-size:1.3rem;font-weight:800;display:flex;align-items:baseline;gap:10px}
+section h2 .n{font-family:var(--mono);font-size:.8rem;color:var(--accent);font-weight:400}
+section h3{margin:18px 0 4px;font-size:1rem;font-weight:700}
+p{margin:0 0 10px;max-width:68ch}
+ol,ul{margin:0 0 10px;padding-inline-start:22px;max-width:68ch}
+li{margin-bottom:4px}
+ol.steps{list-style:none;padding:0;counter-reset:s;display:flex;flex-direction:column;gap:8px}
+ol.steps li{counter-increment:s;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px;display:flex;gap:12px;margin:0}
+ol.steps li::before{content:counter(s);flex:none;width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-weight:700;font-size:.85rem;display:grid;place-items:center;margin-top:4px}
+kbd{font-family:inherit;font-size:.9em;font-weight:700;background:var(--accent-soft);color:var(--ink);border-radius:6px;padding:1px 8px;white-space:nowrap}
+code{font-family:var(--mono);font-size:.86em;direction:ltr;unicode-bidi:isolate;background:var(--sunk);border-radius:5px;padding:1px 6px}
+.note{border:1px solid var(--wait);background:var(--wait-soft);border-radius:var(--r);padding:10px 14px;font-size:.93rem;max-width:68ch;margin:0 0 10px}
+.tablewrap{overflow-x:auto;margin-bottom:10px}
+table{border-collapse:collapse;width:100%;font-size:.93rem;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+th,td{text-align:start;padding:8px 12px;border-top:1px solid var(--line);vertical-align:top}
+tr:first-child th{border-top:0;color:var(--muted);font-weight:700;font-size:.82rem}
+footer{grid-column:1/-1;color:var(--muted);font-size:.85rem;border-top:1px solid var(--line);padding-top:16px}
+@media (max-width:760px){
+  .page{grid-template-columns:minmax(0,1fr);gap:20px}
+  nav{position:static;flex-direction:row;flex-wrap:wrap;gap:4px}
+  nav a{background:var(--surface);border:1px solid var(--line)}
+  header h1{font-size:1.6rem}
+}
+</style>
+</head>
+<body>
+<div class="page">
+<header>
+  <h1>راهنمای دست‌به‌دست</h1>
+  <p>فرستادن فایل بین دستگاه‌های خودت — ویندوز، لینوکس، مک، اندروید و آیفون — روی همان شبکه‌ای که به آن وصل‌اند. بدون حساب کاربری، بدون سرور.</p>
+</header>
+
+<nav aria-label="فهرست">
+  <a href="#install">نصب</a>
+  <a href="#pair">جفت‌کردن دو دستگاه</a>
+  <a href="#send">فرستادن فایل</a>
+  <a href="#share">اشتراک‌گذاری از برنامه‌های دیگر</a>
+  <a href="#receive">دریافت و صندوق</a>
+  <a href="#board">میز مشترک</a>
+  <a href="#iphone">آیفون و مرورگر</a>
+  <a href="#networks">شبکه‌ها و آدرس ثابت</a>
+  <a href="#settings">تنظیمات</a>
+  <a href="#trouble">اگر کار نکرد</a>
+</nav>
+
+<main>
+<section id="install">
+  <h2><span class="n">۰۱</span>نصب</h2>
+  <div class="tablewrap"><table>
+    <tr><th>سیستم</th><th>روش نصب</th></tr>
+    <tr><td>لینوکس</td><td><code>sudo apt install ./DastBeDast_*_amd64.deb</code></td></tr>
+    <tr><td>ویندوز</td><td>فایل <code>DastBeDast_*_x64-setup.exe</code> را اجرا کن. ویندوز یک بار دربارهٔ فایروال می‌پرسد؛ برای شبکه‌های خصوصی اجازه بده.</td></tr>
+    <tr><td>مک</td><td>فایل <code>.dmg</code> را باز کن و برنامه را به Applications بکش. بار اول روی برنامه راست‌کلیک کن و Open را بزن.</td></tr>
+    <tr><td>اندروید</td><td>فایل <code>.apk</code> را نصب کن.</td></tr>
+    <tr><td>آیفون</td><td>برنامهٔ جدا ندارد؛ بخش <a href="#iphone">آیفون و مرورگر</a> را ببین.</td></tr>
+  </table></div>
+  <p>زبان برنامه با دکمهٔ <kbd>English</kbd> / <kbd>فارسی</kbd> در نوار بالا عوض می‌شود.</p>
+</section>
+
+<section id="pair">
+  <h2><span class="n">۰۲</span>جفت‌کردن دو دستگاه</h2>
+  <p>هر دو دستگاه فقط یک بار جفت می‌شوند. بعد از آن روی هر شبکهٔ ذخیره‌شده خودشان همدیگر را پیدا می‌کنند.</p>
+  <ol class="steps">
+    <li><span>هر دو دستگاه را به یک شبکه وصل کن و روی <strong>هر دو</strong> دکمهٔ <kbd>+ اتصال جدید</kbd> را بزن.</span></li>
+    <li><span>در فهرست «دستگاه‌های نزدیک» دستگاه دیگر را پیدا کن و <kbd>جفت کن</kbd> را بزن.</span></li>
+    <li><span>روی هر دو دستگاه یک کد ۶ رقمی می‌آید. اگر یکی بودند، روی هر دو <kbd>یکی است، جفت کن</kbd> را بزن.</span></li>
+  </ol>
+  <h3>اگر دستگاه در فهرست نیامد</h3>
+  <ul>
+    <li><kbd>جست‌وجوی شبکه</kbd> را بزن؛ برای شبکه‌هایی است که کشف خودکار را می‌بندند.</li>
+    <li>یا در بخش «با آدرس»، آی‌پی دستگاه دیگر و پورت <code>47800</code> را وارد کن و <kbd>وصل شو</kbd> را بزن. آدرس هر دستگاه پایین همان پنجره و در تنظیماتش نوشته شده است.</li>
+  </ul>
+</section>
+
+<section id="send">
+  <h2><span class="n">۰۳</span>فرستادن فایل</h2>
+  <ol class="steps">
+    <li><span>در بخش «دستگاه‌ها» روی کارت دستگاهِ وصل بزن، یا دکمهٔ <kbd>فایل</kbd> یا <kbd>پوشه</kbd> زیر کارت را بزن.</span></li>
+    <li><span>فایل‌ها را انتخاب کن. پیشرفت کار در بخش «انتقال‌ها» دیده می‌شود.</span></li>
+  </ol>
+  <ul>
+    <li>روی دسکتاپ می‌توانی فایل را از فایل‌منیجر بکشی و روی کارت دستگاه یا روی میز مشترک رها کنی.</li>
+    <li>فرستادن پوشه فقط روی دسکتاپ هست؛ روی گوشی فقط فایل.</li>
+    <li>اگر وسط کار ارتباط قطع شود، با برگشتن دستگاه انتقال از همان‌جا ادامه پیدا می‌کند.</li>
+    <li>کارت کم‌رنگ یعنی آن دستگاه الان در دسترس نیست.</li>
+  </ul>
+</section>
+
+<section id="share">
+  <h2><span class="n">۰۴</span>اشتراک‌گذاری از برنامه‌های دیگر (اندروید)</h2>
+  <p>لازم نیست اول دست‌به‌دست را باز کنی. از گالری، فایل‌منیجر یا هر برنامهٔ دیگری:</p>
+  <ol class="steps">
+    <li><span>یک یا چند فایل را انتخاب کن و دکمهٔ اشتراک‌گذاری (Share) را بزن.</span></li>
+    <li><span>در فهرست برنامه‌ها <kbd>DastBeDast</kbd> را انتخاب کن.</span></li>
+    <li><span>در پنجرهٔ «به کجا فرستاده شود؟» دستگاه مقصد یا <kbd>میز مشترک</kbd> را بزن.</span></li>
+  </ol>
+  <p>اگر متن یا لینک را به اشتراک بگذاری، در کادر میز مشترک قرار می‌گیرد؛ با زدن <kbd>بگذار</kbd> روی همهٔ دستگاه‌هایت دیده می‌شود.</p>
+  <p class="note">این قابلیت از نسخهٔ ۰.۳.۳ اضافه شده است. اگر برنامه در فهرست اشتراک نیست، نسخهٔ جدید APK را نصب کن.</p>
+</section>
+
+<section id="receive">
+  <h2><span class="n">۰۵</span>دریافت و صندوق</h2>
+  <p>فایل‌های رسیده در «صندوق دریافت» می‌مانند تا تصمیم بگیری:</p>
+  <div class="tablewrap"><table>
+    <tr><th>دکمه</th><th>کار</th></tr>
+    <tr><td><kbd>نگه دار</kbd></td><td>فایل به پوشهٔ «نگه دار» می‌رود.</td></tr>
+    <tr><td><kbd>باز کن</kbd></td><td>فایل با برنامهٔ مناسبش باز می‌شود.</td></tr>
+    <tr><td><kbd>نمایش پوشه</kbd></td><td>پوشه‌ای که فایل در آن است باز می‌شود.</td></tr>
+    <tr><td><kbd>حذف</kbd></td><td>فایل پاک می‌شود. باید دو بار بزنی.</td></tr>
+  </table></div>
+  <h3>با تأیید یا بدون تأیید</h3>
+  <ul>
+    <li><kbd>با تأیید</kbd>: قبل از هر دریافت از تو پرسیده می‌شود و <kbd>قبول</kbd> یا <kbd>رد</kbd> را می‌زنی.</li>
+    <li><kbd>بدون تأیید</kbd>: فایل دستگاه‌های جفت‌شده مستقیم وارد صندوق می‌شود. در تنظیمات می‌توانی برایش سقف حجم بگذاری.</li>
+  </ul>
+  <p>این حالت را می‌شود برای یک دستگاه خاص (دکمهٔ <kbd>⋯</kbd> روی کارتش) یا برای یک شبکهٔ خاص (کلیک روی اسم شبکه) جدا تعیین کرد.</p>
+</section>
+
+<section id="board">
+  <h2><span class="n">۰۶</span>میز مشترک</h2>
+  <p>هر چه روی میز بگذاری — متن، لینک، فایل یا پوشه — روی همهٔ دستگاه‌هایت دیده می‌شود. فایل فقط وقتی جابه‌جا می‌شود که یک دستگاه <kbd>بگیر</kbd> را بزند.</p>
+  <ul>
+    <li>متن یا لینک را در کادر بنویس و <kbd>بگذار</kbd> را بزن. روی دستگاه دیگر با <kbd>کپی</kbd> برش دار.</li>
+    <li>با <kbd>بردار</kbd> چیزی از روی میز همهٔ دستگاه‌ها برداشته می‌شود.</li>
+    <li>اگر یکی از دستگاه‌هایت همیشه روشن است، در تنظیماتش «این دستگاه همیشه روشن است» را بزن. آن دستگاه از هر چه روی میز می‌آید یک نسخه نگه می‌دارد تا بقیه وقتی صاحب فایل خاموش است هم بتوانند آن را بگیرند.</li>
+  </ul>
+</section>
+
+<section id="iphone">
+  <h2><span class="n">۰۷</span>آیفون و مرورگر</h2>
+  <p>آیفون از راه یکی از کامپیوترهایت کار می‌کند: به آن فایل می‌فرستد، از آن فایل می‌گیرد و میز مشترک را می‌بیند.</p>
+  <ol class="steps">
+    <li><span>آیفون را به همان وای‌فای کامپیوتر وصل کن.</span></li>
+    <li><span>روی کامپیوتر <kbd>نصب روی آیفون</kbd> را بزن و کد را با دوربین آیفون اسکن کن.</span></li>
+    <li><span>در Safari دکمهٔ Share را بزن و «Add to Home Screen» را انتخاب کن.</span></li>
+  </ol>
+  <p class="note">تا وقتی برنامه روی کامپیوتر باز و لینک روشن است کار می‌کند. هر کس روی همان شبکه این لینک را داشته باشد می‌تواند به صندوق تو فایل بفرستد؛ با <kbd>لینک جدید</kbd> لینک قبلی از کار می‌افتد.</p>
+</section>
+
+<section id="networks">
+  <h2><span class="n">۰۸</span>شبکه‌ها و آدرس ثابت</h2>
+  <p>با اولین جفت‌سازی، شبکهٔ فعلی خودکار ذخیره می‌شود. دفعهٔ بعد که به آن وصل شوی شناخته می‌شود و دستگاه‌هایت پیدا می‌شوند. شبکهٔ ناشناس را با <kbd>ذخیره‌اش کن</kbd> در نوار بالا ذخیره کن و اسم بده (مثلاً خانه یا دفتر).</p>
+  <h3>اتصال از بیرون شبکه</h3>
+  <ol>
+    <li>روی روتر، پورت TCP <code>47800</code> را به دستگاهی که آی‌پی ثابت اینترنتی دارد فوروارد کن.</li>
+    <li>روی دستگاه دیگر، در «اتصال جدید ← با آدرس» آن آی‌پی یا دامنه را وارد کن و تیک «این آدرس ثابت است» را بزن.</li>
+  </ol>
+  <p>دستگاهی که پشت NAT است خودش به دستگاهِ آدرس‌دار وصل می‌شود و از همان ارتباط فایل می‌گیرد.</p>
+</section>
+
+<section id="settings">
+  <h2><span class="n">۰۹</span>تنظیمات</h2>
+  <p>روی اسم دستگاه در نوار بالا بزن:</p>
+  <ul>
+    <li>اسم دستگاه</li>
+    <li>پوشهٔ صندوق دریافت، پوشهٔ «نگه دار» و پوشهٔ فایل‌های میز مشترک</li>
+    <li>سقف پذیرش بدون تأیید به گیگابایت (۰ یعنی بدون سقف)</li>
+    <li>پورت (بعد از اجرای دوبارهٔ برنامه اعمال می‌شود)</li>
+    <li>«این دستگاه همیشه روشن است»</li>
+  </ul>
+  <p>روی اندروید، فایل‌های دریافتی در <code>Download/DastBeDast</code> ذخیره می‌شوند. برای انتخاب هر پوشهٔ دیگری از حافظهٔ گوشی، برنامه «دسترسی به همهٔ فایل‌ها» می‌خواهد.</p>
+</section>
+
+<section id="trouble">
+  <h2><span class="n">۱۰</span>اگر کار نکرد</h2>
+  <div class="tablewrap"><table>
+    <tr><th>مشکل</th><th>چه کار کنم</th></tr>
+    <tr><td>دستگاه دیگر دیده نمی‌شود</td><td>هر دو روی یک شبکه باشند و «اتصال جدید» روی هر دو باز باشد. بعد <kbd>جست‌وجوی شبکه</kbd> یا اتصال با آدرس را امتحان کن.</td></tr>
+    <tr><td>جفت شده ولی «در دسترس نیست»</td><td>فایروال باید پورت TCP <code>47800</code> و UDP <code>47801</code> را باز بگذارد. برنامه روی دستگاه دیگر باید باز باشد.</td></tr>
+    <tr><td>گوشی اندروید چیزی نمی‌گیرد</td><td>نسخهٔ اندروید فقط وقتی کار می‌کند که برنامه باز باشد.</td></tr>
+    <tr><td>فایل رسیده در فایل‌منیجر گوشی نیست</td><td>در بخش صندوق <kbd>ذخیره در پوشهٔ Download</kbd> را بزن.</td></tr>
+    <tr><td>آیفون دیگر وصل نمی‌شود</td><td>آی‌پی کامپیوتر عوض شده است؛ دوباره کد را اسکن و به صفحهٔ اصلی اضافه کن.</td></tr>
+    <tr><td>انتقال نیمه‌کاره ماند</td><td>صبر کن تا دستگاه برگردد؛ خودش ادامه می‌دهد. با <kbd>لغو</kbd> می‌توانی تمامش کنی.</td></tr>
+  </table></div>
+</section>
+</main>
+
+<footer>دست‌به‌دست · هر ارتباط با TLS 1.3 و اثر انگشت دستگاه‌های جفت‌شده رمز می‌شود و هر فایل با BLAKE3 بررسی می‌شود.</footer>
+</div>
+</body>
+</html>

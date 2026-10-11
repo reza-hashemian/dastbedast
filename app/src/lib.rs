@@ -12,18 +12,22 @@ async fn call(state: tauri::State<'_, AppCore>, cmd: String, args: Value) -> Res
     state.0.call(&cmd, args).await.map_err(|e| e.to_string())
 }
 
-/// Android gives the files a user picked as `content://` addresses, which only the app's own
-/// process may open. Each one is opened here and handed to the core as a stand-in path.
+/// Android gives the files a user picked, or shared from another app, as `content://` addresses,
+/// which only the app's own process may open. Each one is opened here and handed to the core as
+/// a stand-in path. `names` are the names the system knows them by, where it does.
 #[tauri::command]
-fn adopt(app: tauri::AppHandle, uris: Vec<String>) -> Result<Vec<String>, String> {
+fn adopt(app: tauri::AppHandle, uris: Vec<String>, names: Option<Vec<String>>) -> Result<Vec<String>, String> {
     use tauri_plugin_fs::{FilePath, FsExt, OpenOptions};
+    let names = names.unwrap_or_default();
     uris.into_iter()
-        .map(|uri| {
+        .enumerate()
+        .map(|(i, uri)| {
             let mut opts = OpenOptions::new();
             opts.read(true);
             let path: FilePath = uri.parse().map_err(|_| uri.clone())?;
             let file = app.fs().open(path, opts).map_err(|e| e.to_string())?;
-            let name = picked_name(&file, &uri);
+            let known = names.get(i).map(|n| n.trim()).filter(|n| !n.is_empty());
+            let name = known.map(str::to_string).unwrap_or_else(|| picked_name(&file, &uri));
             Ok(dbd_core::adopt_file(file, &name))
         })
         .collect()

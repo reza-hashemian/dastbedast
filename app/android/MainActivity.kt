@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.DocumentsContract
+import android.provider.OpenableColumns
 import android.provider.Settings
 import android.view.View
 import android.webkit.JavascriptInterface
@@ -22,9 +23,13 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import java.io.File
+import org.json.JSONArray
+import org.json.JSONObject
 
 class MainActivity : TauriActivity() {
   private var multicast: WifiManager.MulticastLock? = null
+  private var web: WebView? = null
+  private var shared = ""
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -50,6 +55,50 @@ class MainActivity : TauriActivity() {
       }
     } catch (e: Exception) {
     }
+    // A restored activity is handed its old intent again; what it carried was dealt with the first time.
+    if (savedInstanceState == null) keepShared(intent)
+  }
+
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    keepShared(intent)
+  }
+
+  /** Remembers what another app shared with this one, until the page takes it. */
+  @Suppress("DEPRECATION")
+  private fun keepShared(intent: Intent?) {
+    if (intent == null || intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
+    val uris = ArrayList<Uri>()
+    when (intent.action) {
+      Intent.ACTION_SEND -> intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.let { uris.add(it) }
+      Intent.ACTION_SEND_MULTIPLE -> intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)?.let { uris.addAll(it) }
+      else -> return
+    }
+    val files = JSONArray()
+    // Only what another app lends through the system; a plain path could point at this app's own files.
+    for (uri in uris) if (uri.scheme == "content") files.put(JSONObject().put("uri", uri.toString()).put("name", nameOf(uri)))
+    val text = if (uris.isEmpty()) intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()?.trim() ?: "" else ""
+    if (files.length() == 0 && text.isEmpty()) return
+    synchronized(this) { shared = JSONObject().put("files", files).put("text", text).toString() }
+    // If the page is already up it is told now; otherwise it asks when it starts.
+    web?.let { it.post { it.evaluateJavascript("window.dbdShared && window.dbdShared()", null) } }
+  }
+
+  private fun nameOf(uri: Uri): String {
+    try {
+      contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+        if (c.moveToFirst()) return c.getString(0) ?: ""
+      }
+    } catch (e: Exception) {
+    }
+    return ""
+  }
+
+  @Synchronized
+  fun takeShared(): String {
+    val s = shared
+    shared = ""
+    return s
   }
 
   override fun onDestroy() {
@@ -61,6 +110,7 @@ class MainActivity : TauriActivity() {
   }
 
   override fun onWebViewCreate(webView: WebView) {
+    web = webView
     webView.addJavascriptInterface(Bridge(this), "DbdAndroid")
   }
 }
@@ -73,6 +123,10 @@ class Bridge(private val activity: MainActivity) {
     if (Build.VERSION.SDK_INT >= 30) return Environment.isExternalStorageManager()
     return activity.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
   }
+
+  /** What another app shared with this one, as JSON `{files: [{uri, name}], text}`; empty when there is nothing. Given out once. */
+  @JavascriptInterface
+  fun takeShared(): String = activity.takeShared()
 
   @JavascriptInterface
   fun askAllFiles() {

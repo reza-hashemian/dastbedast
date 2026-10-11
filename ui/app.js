@@ -211,6 +211,9 @@
     store_done: ['فایل‌ها از این به بعد در Download/DastBeDast ذخیره می‌شوند', 'Files are now saved in Download/DastBeDast'],
     store_denied: ['بدون این دسترسی نمی‌شود در حافظهٔ گوشی ذخیره کرد', 'Without this access nothing can be saved to the phone’s storage'],
     cant_open: ['برنامه‌ای برای باز کردن این پیدا نشد: {0}', 'No app could open this: {0}'],
+    share_title: ['به کجا فرستاده شود؟', 'Where should it go?'],
+    share_none: ['دستگاهِ وصلی نیست. می‌توانی روی میز مشترک بگذاری تا بعداً بگیرند.', 'No device is connected. You can put it on the shared board for them to get later.'],
+    share_text: ['متن آمادهٔ گذاشتن روی میز مشترک است', 'The text is ready to put on the shared board'],
     ev_received: ['«{0}» از {1} رسید', '“{0}” arrived from {1}'],
     ev_incoming: ['{0} می‌خواهد فایل بفرستد', '{0} wants to send files']
   };
@@ -537,12 +540,50 @@
     $('dlg-settings').showModal();
   }
 
+  // What another app shared with this one, waiting for the user to say where it goes.
+  var shareWait = null;
+  function renderShare(force) {
+    var dlg = $('dlg-share');
+    if (!shareWait || (!dlg.open && !force)) return;
+    var n = shareWait.names, what = n.length > 1 ? t('n_files', num(n.length)) : n[0];
+    var online = S.peers.some(function (p) { return p.online; });
+    $('share-body').innerHTML = '<div class="dlg-head"><h2>' + esc(t('share_title')) + '</h2>' + xBtn() + '</div>' +
+      '<p class="hint"><bdi>' + esc(what) + '</bdi></p>' +
+      (online ? '' : '<p class="hint">' + esc(t('share_none')) + '</p>') +
+      '<div class="dirs">' + S.peers.map(function (p) {
+        return '<button type="button" class="dir" data-act="share-to" data-id="' + esc(p.id) + '"' + (p.online ? '' : ' disabled') + '>' + icon(p.kind) +
+          '<bdi>' + esc(p.name) + '</bdi>' + (p.online ? '' : '<span class="hint">' + esc(t(p.here ? 'unreachable' : 'not_here')) + '</span>') + '</button>';
+      }).join('') + '<button type="button" class="dir" data-act="share-board">' + FOLDER + '<bdi>' + esc(t('board')) + '</bdi></button></div>';
+    if (!dlg.open) dlg.showModal();
+  }
+  function shareDone() { var paths = shareWait ? shareWait.paths : []; shareWait = null; $('dlg-share').close(); return paths; }
+  // Called at start, when the app comes back to the front, and by the shell when something is shared while the page is up.
+  function takeShared() {
+    if (!A || !A.takeShared || !S) return;
+    var raw = A.takeShared();
+    if (!raw) return;
+    var got = JSON.parse(raw);
+    if (!got.files.length) {
+      // Shared text or a link can only go on the board; it is left in the box for the user to put.
+      var el = $('board-text');
+      el.value = got.text; el.scrollIntoView({ block: 'center' }); el.focus();
+      return toast(t('share_text'));
+    }
+    var uris = got.files.map(function (f) { return f.uri; }), names = got.files.map(function (f) { return f.name; });
+    // The files are opened at once: the other app lends them only for as long as this visit lasts.
+    run(T.core.invoke('adopt', { uris: uris, names: names }).then(function (paths) {
+      shareWait = { paths: paths, names: paths.map(function (p) { return p.replace(/^.*\//, ''); }) };
+      renderShare(true);
+    }));
+  }
+  window.dbdShared = takeShared;
+
   function render() {
     // A phone has no folder picker and nothing to "show in folder".
     document.body.classList.toggle('phone', S.me.kind === 'android');
     var want = S.settings.lang === 'en' ? 'en' : 'fa';
     if (want !== lang || !langApplied) { lang = want; langApplied = true; applyLang(); }
-    renderBar(); renderNets(); renderDevs(); renderBoard(); renderTransfers(); renderInbox(); renderPair(); renderNew(); renderPhone(); renderPeer(false);
+    renderBar(); renderNets(); renderDevs(); renderBoard(); renderTransfers(); renderInbox(); renderPair(); renderNew(); renderPhone(); renderPeer(false); renderShare(false);
   }
   function reload() { return call('snapshot').then(function (s) { S = s; render(); }); }
 
@@ -621,6 +662,8 @@
   $('dlg-dir').addEventListener('close', function () { if (dirResolve) { dirResolve(null); dirResolve = null; } });
   // Coming back from the system's permission screen, the folder list may have grown.
   document.addEventListener('visibilitychange', function () { if (!document.hidden && $('dlg-dir').open && dirState) run(loadDir(dirState.path)); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) takeShared(); });
+  $('dlg-share').addEventListener('close', function () { shareWait = null; });
 
   // Asks the phone for storage access and resolves once it is given; the answer comes from a system screen, so it is polled for.
   function storageAccess() {
@@ -682,6 +725,8 @@
     },
     'board-files': function () { return boardPut(false); },
     'board-folder': function () { return boardPut(true); },
+    'share-to': function (d) { return call('send', { peer: d.id, paths: shareDone() }); },
+    'share-board': function () { return call('board_put', { paths: shareDone() }); },
     'board-get': function (d) { return call('board_get', { id: d.id }); },
     'board-keep': function (d) { return call('board_keep', { id: d.id }); },
     'board-open': function (d) { return openItem('board_open', d, boardItem(d.id).path); },
@@ -799,7 +844,7 @@
   }
 
   listen(onEvent);
-  reload().catch(function (e) {
+  reload().then(function () { run(Promise.resolve().then(takeShared)); }, function (e) {
     document.querySelector('main').innerHTML = '<p class="empty" style="margin:24px">' + esc(t('no_core', e.message)) + '</p>';
   });
 })();

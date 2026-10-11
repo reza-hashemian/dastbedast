@@ -28,4 +28,24 @@ text = text.replace("    <application", permissions + "\n    <application\n     
 open(path, "w", encoding="utf-8").write(text)
 PY
 fi
-grep -n "uses-permission\|requestLegacy" "$manifest"
+
+if ! grep -q android.intent.action.SEND "$manifest"; then
+  python3 - "$manifest" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path, encoding="utf-8").read()
+share = '''            <!-- Puts the app in the list other apps show when the user shares files, text or a link. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+'''
+assert text.count("</activity>") == 1
+text = text.replace("        </activity>", share + "        </activity>", 1)
+assert share in text
+open(path, "w", encoding="utf-8").write(text)
+PY
+fi
+grep -n "uses-permission\|requestLegacy\|intent.action" "$manifest"

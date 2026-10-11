@@ -14,6 +14,7 @@ Pair two devices once and they find each other from then on. No account, no clou
 - **Shared board.** Put a file, a note or a link out once and every device of yours sees it. Files move only when a device asks for them.
 - **Always-on device.** One device can keep a copy of everything on the board, so the others can get it while its owner is off.
 - **Static address.** A device with a public IP and a forwarded port can be reached from anywhere; devices behind NAT are called back over the same link.
+- **Share from other apps.** On Android the app is in the share list: select files anywhere, press Share, choose the device.
 - **Browser guest.** A device without the app sends and receives through a link and a QR code.
 - **Interrupted transfers continue** from where they stopped, and every file is verified with BLAKE3.
 

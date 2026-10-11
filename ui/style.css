@@ -180,6 +180,8 @@ button.nm.open:hover{color:var(--accent);text-decoration:underline}
 .dir svg{width:20px;height:20px;flex:none;color:var(--accent)}
 .dir.up{color:var(--muted);font-size:.86rem}
 .dir bdi{overflow-wrap:anywhere;min-width:0}
+.dir:disabled{opacity:.55}
+.dir .hint{margin-inline-start:auto;flex:none}
 
 /* Long names never push a box wider than the screen. */
 .dlg h2,.dlg .hint,.net b,.me,.netchip{overflow-wrap:anywhere;min-width:0}
