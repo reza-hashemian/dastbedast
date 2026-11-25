@@ -1,6 +1,6 @@
 [package]
 name = "dbd"
-version = "0.3.4"
+version = "0.4.0"
 edition = "2021"
 
 [dependencies]
@@ -11,3 +11,7 @@ anyhow.workspace = true
 axum.workspace = true
 futures-util.workspace = true
 rand = "0.8"
+
+[features]
+# `cargo build -p dbd --features remote`: a headless device on a desktop that phones can use as a remote.
+remote = ["dbd-core/remote"]

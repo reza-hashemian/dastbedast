@@ -15,6 +15,9 @@ Pair two devices once and they find each other from then on. No account, no clou
 - **Always-on device.** One device can keep a copy of everything on the board, so the others can get it while its owner is off.
 - **Static address.** A device with a public IP and a forwarded port can be reached from anywhere; devices behind NAT are called back over the same link.
 - **Share from other apps.** On Android the app is in the share list: select files anywhere, press Share, choose the device.
+- **Remote control.** A phone turns the slides of a paired computer, scrolls its PDF, changes its music and volume, moves its pointer, and draws a red laser dot on its screen by turning the phone. It can show a small picture of that screen, and lock it, turn the display off or put it to sleep. The phone's volume buttons turn the slides. Each computer can switch this off.
+- **Clipboard.** Send what you copied to another device, or take what it copied.
+- **Photo to a device.** Photograph the whiteboard with the phone and it lands on the laptop.
 - **Browser guest.** A device without the app sends and receives through a link and a QR code.
 - **Interrupted transfers continue** from where they stopped, and every file is verified with BLAKE3.
 

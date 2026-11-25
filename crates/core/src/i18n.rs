@@ -32,6 +32,10 @@ pub(crate) fn remote(code: &str) -> String {
         "cancelled" => tr!("گیرنده لغو کرد", "The receiver cancelled"),
         "declined" => tr!("گیرنده نپذیرفت", "The receiver declined"),
         "board_gone" => tr!("این فایل دیگر روی آن دستگاه نیست", "That device no longer has this file"),
+        "remote_off" => tr!("کنترل از راه دور روی آن دستگاه خاموش است", "The remote is switched off on that device"),
+        "remote_none" => tr!("آن دستگاه را نمی‌شود از راه دور کنترل کرد", "That device cannot be controlled remotely"),
+        "clip_none" => tr!("آن دستگاه به کلیپ‌بورد دسترسی ندارد", "That device has no clipboard to use"),
+        "clip_empty" => tr!("کلیپ‌بورد خالی است یا متن ندارد", "The clipboard is empty or holds no text"),
         other => other.to_string(),
     }
 }

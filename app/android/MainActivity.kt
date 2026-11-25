@@ -12,9 +12,12 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.DocumentsContract
+import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.provider.Settings
+import android.view.KeyEvent
 import android.view.View
+import android.view.WindowManager
 import android.webkit.JavascriptInterface
 import android.webkit.MimeTypeMap
 import android.webkit.WebView
@@ -23,13 +26,23 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import org.json.JSONArray
 import org.json.JSONObject
+
+private const val PHOTO_REQUEST = 4711
 
 class MainActivity : TauriActivity() {
   private var multicast: WifiManager.MulticastLock? = null
   private var web: WebView? = null
   private var shared = ""
+  /** The remote is open: the volume buttons go to the page and the screen stays on. */
+  @Volatile private var remoteKeys = false
+  /** The photo being taken, and the device it is for. */
+  private var photo: File? = null
+  private var photoFor = ""
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -109,6 +122,64 @@ class MainActivity : TauriActivity() {
     super.onDestroy()
   }
 
+  fun remoteMode(on: Boolean) {
+    runOnUiThread {
+      remoteKeys = on
+      if (on) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+      else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+  }
+
+  /** Opens the camera; the picture goes to the device [peer] once it is taken. */
+  fun takePhoto(peer: String) {
+    runOnUiThread {
+      try {
+        val dir = File(cacheDir, "photos").apply { mkdirs() }
+        // Pictures from earlier visits were sent already.
+        dir.listFiles()?.forEach { if (System.currentTimeMillis() - it.lastModified() > 86_400_000L) it.delete() }
+        val stamp = SimpleDateFormat("yyyy-MM-dd HH.mm.ss", Locale.US).format(Date())
+        val file = File(dir, "photo $stamp.jpg")
+        val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
+        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+          .putExtra(MediaStore.EXTRA_OUTPUT, uri)
+          .addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        photo = file
+        photoFor = peer
+        @Suppress("DEPRECATION")
+        startActivityForResult(intent, PHOTO_REQUEST)
+      } catch (e: Exception) {
+        photo = null
+      }
+    }
+  }
+
+  @Deprecated("Deprecated in Java")
+  override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    @Suppress("DEPRECATION")
+    super.onActivityResult(requestCode, resultCode, data)
+    if (requestCode != PHOTO_REQUEST) return
+    val file = photo
+    photo = null
+    if (resultCode != RESULT_OK || file == null || !file.exists() || file.length() == 0L) return
+    val js = "window.dbdPhoto && window.dbdPhoto(" + JSONObject.quote(photoFor) + ", " + JSONObject.quote(file.absolutePath) + ")"
+    web?.let { it.post { it.evaluateJavascript(js, null) } }
+  }
+
+  override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+    val key = when (event.keyCode) {
+      KeyEvent.KEYCODE_VOLUME_UP -> "up"
+      KeyEvent.KEYCODE_VOLUME_DOWN -> "down"
+      else -> null
+    }
+    val page = web
+    if (!remoteKeys || key == null || page == null) return super.dispatchKeyEvent(event)
+    // Both the press and the release are kept from the system, so the phone's own volume does not change.
+    if (event.action == KeyEvent.ACTION_DOWN) {
+      page.evaluateJavascript("window.dbdKey && window.dbdKey('$key', ${event.repeatCount > 0})", null)
+    }
+    return true
+  }
+
   override fun onWebViewCreate(webView: WebView) {
     web = webView
     webView.addJavascriptInterface(Bridge(this), "DbdAndroid")
@@ -127,6 +198,14 @@ class Bridge(private val activity: MainActivity) {
   /** What another app shared with this one, as JSON `{files: [{uri, name}], text}`; empty when there is nothing. Given out once. */
   @JavascriptInterface
   fun takeShared(): String = activity.takeShared()
+
+  /** The remote is open (`true`) or closed: see [MainActivity.remoteMode]. */
+  @JavascriptInterface
+  fun remoteMode(on: Boolean) = activity.remoteMode(on)
+
+  /** Takes a photo with the camera app and sends it to the paired device [peer]. */
+  @JavascriptInterface
+  fun takePhoto(peer: String) = activity.takePhoto(peer)
 
   @JavascriptInterface
   fun askAllFiles() {

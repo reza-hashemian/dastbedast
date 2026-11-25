@@ -186,3 +186,34 @@ button.nm.open:hover{color:var(--accent);text-decoration:underline}
 /* Long names never push a box wider than the screen. */
 .dlg h2,.dlg .hint,.net b,.me,.netchip{overflow-wrap:anywhere;min-width:0}
 .ask .acts{flex-wrap:wrap}
+
+/* remote control: big keys a thumb finds without looking */
+.remote .dlg{gap:12px}
+.rst{display:flex;align-items:center;gap:8px;margin-top:-6px}
+.rgrid{display:grid;gap:10px;direction:ltr}
+.rgrid.one{grid-template-columns:1fr}
+.rgrid.two{grid-template-columns:1fr 2fr}
+.rgrid.two.even{grid-template-columns:1fr 1fr}
+.rgrid.three{grid-template-columns:repeat(3,1fr)}
+.rgrid.four{grid-template-columns:repeat(4,1fr)}
+.rk{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:12px;min-height:52px;padding:6px 4px;font-size:.8rem;font-weight:700;line-height:1.4;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;min-width:0}
+.rk span{overflow-wrap:anywhere;text-align:center}
+.rk svg{width:24px;height:24px;flex:none;color:var(--accent)}
+.rk.tall{min-height:84px}
+.rk.huge{min-height:min(34vh,260px);font-size:1rem}
+.rk.huge svg{width:48px;height:48px}
+.rk.go{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.rk.go svg{color:currentColor}
+.rk.on{background:var(--accent-soft);border-color:var(--accent)}
+.rk.go.on{background:color-mix(in srgb,var(--accent) 80%,var(--ink))}
+.pad{min-height:min(44vh,340px);border:1.5px dashed var(--line);border-radius:12px;background:var(--bg);touch-action:none;
+  display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;font-size:.82rem;color:var(--muted);line-height:1.8}
+.pad.on{border-color:var(--accent);border-style:solid}
+.hint.bad{color:var(--danger)}
+.rk.huge.low{min-height:min(18vh,140px)}
+.rk.warn{color:var(--danger)}
+.rk[data-armed]{background:var(--danger);border-color:var(--danger);color:#fff}
+.rshot{display:block;width:100%;max-height:32vh;object-fit:contain;border-radius:10px;border:1px solid var(--line);background:#000}
+.pad.laser.on{border-color:#e33;box-shadow:inset 0 0 0 2px rgb(230 50 50 / .35)}
+.remote .seg button{padding:3px 2px;font-size:.78rem}

@@ -63,6 +63,22 @@ ul li>div{min-width:0;display:flex;flex-direction:column}
 .prog{height:4px;border-radius:4px;background:var(--sunk);overflow:hidden;direction:ltr;margin-top:4px}
 .prog i{display:block;height:100%;background:var(--accent)}
 .grow{flex:1;min-width:0}
+.rgrid{display:grid;gap:10px;direction:ltr}
+.rgrid.two{grid-template-columns:1fr 2fr}.rgrid.even{grid-template-columns:1fr 1fr}.rgrid.three{grid-template-columns:repeat(3,1fr)}.rgrid.four{grid-template-columns:repeat(4,1fr)}
+.rk{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:12px;min-height:52px;padding:6px 4px;font-size:.82rem;font-weight:700;line-height:1.4;min-width:0;
+  display:flex;align-items:center;justify-content:center;text-align:center;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;flex-direction:column;gap:4px}
+.rk svg{width:44px;height:44px}
+.rk.huge{min-height:min(30vh,220px);font-size:1.05rem}
+.rk.go{background:var(--accent);border-color:var(--accent);color:var(--on)}
+.rk.on{background:var(--soft);border-color:var(--accent)}
+.rk.go.on{filter:brightness(.88)}
+.pad{min-height:min(40vh,300px);border:1.5px dashed var(--line);border-radius:12px;background:var(--bg);touch-action:none;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--muted);font-size:.84rem;-webkit-user-select:none;user-select:none}
+.pad.on{border-color:var(--accent);border-style:solid}
+.pad.laser.on{border-color:#e33}
+.rk.low{min-height:min(16vh,130px)}
+.rk.warn{color:var(--bad)}
+.rk[data-armed]{background:var(--bad);border-color:var(--bad);color:#fff}
+.rshot{display:block;width:100%;max-height:32vh;object-fit:contain;border-radius:10px;border:1px solid var(--line);background:#000}
 </style>
 </head>
 <body>
@@ -82,7 +98,15 @@ ul li>div{min-width:0;display:flex;flex-direction:column}
     <h2 id="t-devices"></h2>
     <p id="t-devices-hint"></p>
     <div class="devs" id="devs"></div>
+    <label class="pick" id="photo-pick" hidden><span id="t-photo"></span><input id="photo" type="file" accept="image/*" capture="environment"></label>
     <ul id="acts"></ul>
+  </section>
+
+  <section id="remote" hidden>
+    <h2 id="t-remote"></h2>
+    <div class="seg" id="rtabs"></div>
+    <div id="rbody" style="display:flex;flex-direction:column;gap:10px"></div>
+    <p class="bad" id="rerr" hidden></p>
   </section>
 
   <section>
@@ -112,7 +136,15 @@ var TX = EN ? {
   queued:'queued', uploading:'uploading ', ok:'sent', bad:'failed', lost:'connection lost', get:'Download', pct:'%', units:['B','KB','MB','GB'], to:' → ',
   st:{connecting:'connecting…', asking:'waiting for it to accept…', active:'sending ', waiting:'interrupted; continues when it is back', done:'sent', rejected:'declined', cancelled:'cancelled', failed:'failed'},
   tipTitle:'Keep it on your home screen', tipIos:['Tap the Share button at the bottom of Safari.','Choose “Add to Home Screen”.','Open DastBeDast from the home screen from now on.'],
-  tipOther:['Open the browser menu.','Choose “Add to Home screen” or “Install”.'], tipClose:'Not now'
+  tipOther:['Open the browser menu.','Choose “Add to Home screen” or “Install”.'], tipClose:'Not now',
+  remote:'Control “'+HOST+'”', tabs:{slides:'Slides', media:'Music', pointer:'Pointer', laser:'Laser', system:'System'},
+  laser:'Drag your finger here to move a red dot on “'+HOST+'”.', preview:'Show its screen', previewOff:'Hide its screen', sure:'Sure?',
+  sysHint:'The screen comes back with a mouse movement or a key. While asleep, “'+HOST+'” and this page are out of reach.',
+  photo:'Take a photo and send it to “'+HOST+'”',
+  r:{prev:'Previous', next:'Next', up:'▲', down:'▼', first:'First', last:'Last', start:'Start show', black:'Black screen', stop:'End show',
+     track_prev:'⏮', play:'⏯', track_next:'⏭', vol_down:'🔉 −', mute:'🔇', vol_up:'🔊 +', space:'Space (video players)', click:'Click', rclick:'Right click',
+     lock:'Lock', screen_off:'Screen off', sleep:'Sleep'},
+  pad:'Drag to move the pointer. A tap clicks; drag with two fingers to scroll.'
 } : {
   brand:'دست‌به‌دست', intro:'از راه «'+HOST+'». تا وقتی آن دستگاه روشن است و روی شبکه‌اش هستی کار می‌کند.',
   devices:'دستگاه‌ها', devicesHint:'برای فرستادن فایل روی یک دستگاه بزن.', connected:'وصل', offline:'در دسترس نیست', thisHost:'دستگاهِ همین لینک',
@@ -121,7 +153,15 @@ var TX = EN ? {
   queued:'در صف', uploading:'در حال فرستادن ', ok:'فرستاده شد', bad:'نشد', lost:'اتصال قطع شد', get:'دریافت', pct:'٪', units:['بایت','کیلوبایت','مگابایت','گیگابایت'], to:' ← ',
   st:{connecting:'در حال اتصال…', asking:'منتظر تأیید گیرنده…', active:'در حال فرستادن ', waiting:'قطع شد؛ با برگشتن دستگاه ادامه پیدا می‌کند', done:'فرستاده شد', rejected:'رد شد', cancelled:'لغو شد', failed:'ناموفق'},
   tipTitle:'روی صفحهٔ اصلی گوشی نگهش دار', tipIos:['پایین Safari دکمهٔ Share (اشتراک‌گذاری) را بزن.','«Add to Home Screen» را انتخاب کن.','از این به بعد «دست‌به‌دست» را از صفحهٔ اصلی باز کن.'],
-  tipOther:['منوی مرورگر را باز کن.','«Add to Home screen» یا «Install» را انتخاب کن.'], tipClose:'فعلاً نه'
+  tipOther:['منوی مرورگر را باز کن.','«Add to Home screen» یا «Install» را انتخاب کن.'], tipClose:'فعلاً نه',
+  remote:'کنترل «'+HOST+'»', tabs:{slides:'ارائه', media:'موسیقی', pointer:'ماوس', laser:'لیزر', system:'سیستم'},
+  laser:'انگشتت را اینجا بکش تا نقطهٔ قرمزی روی «'+HOST+'» حرکت کند.', preview:'نمایش صفحهٔ آن دستگاه', previewOff:'پنهان کردن صفحه', sure:'مطمئنی؟',
+  sysHint:'نمایشگر با حرکت ماوس یا زدن یک کلید دوباره روشن می‌شود. در حالت خواب، «'+HOST+'» و این صفحه از دسترس خارج می‌شوند.',
+  photo:'عکس بگیر و برای «'+HOST+'» بفرست',
+  r:{prev:'قبلی', next:'بعدی', up:'▲', down:'▼', first:'اولین', last:'آخرین', start:'شروع ارائه', black:'صفحهٔ سیاه', stop:'پایان ارائه',
+     track_prev:'⏮', play:'⏯', track_next:'⏭', vol_down:'🔉 −', mute:'🔇', vol_up:'🔊 +', space:'فاصله (پخش ویدیو)', click:'کلیک', rclick:'کلیک راست',
+     lock:'قفل صفحه', screen_off:'خاموشی نمایشگر', sleep:'خواب'},
+  pad:'انگشت بکش تا نشانگر حرکت کند. یک ضربه کلیک است و کشیدن با دو انگشت اسکرول.'
 };
 [['t-brand','brand'],['t-intro','intro'],['t-devices','devices'],['t-devices-hint','devicesHint'],['t-inbox','inbox'],['t-board','board'],['put','put'],['t-board-file','boardFile'],['t-tip-title','tipTitle'],['tip-close','tipClose']]
   .forEach(function(p){$(p[0]).textContent=TX[p[1]]});
@@ -248,8 +288,124 @@ function drawBoard(s){
     li.appendChild(box); if (act) li.appendChild(act); ul.appendChild(li);
   });
 }
+// ---- remote control of the device of this link
+// Presses go out one at a time and in order; pointer movement that piles up meanwhile is merged.
+var rq=[], rbusy=false, rtab='slides', rpreview=false, shotBusy=false;
+try { rtab = localStorage.getItem('dbd-rtab') || 'slides'; rpreview = localStorage.getItem('dbd-rpreview') === '1' } catch (e) {}
+$('t-photo').textContent = TX.photo;
+$('photo').onchange=function(){ enqueue(this.files, '/up/', HOST); this.value='' };
+// A picture of the screen, renewed while it is shown, one at a time.
+function shotLoop(){
+  var img=$('rshot'); if(shotBusy||!rpreview||rtab!=='slides'||!img||$('remote').hidden) return;
+  shotBusy=true;
+  fetch(base+'/shot?'+Date.now()).then(function(r){ if(!r.ok) return r.text().then(function(t){ throw new Error(t) }); return r.blob() })
+    .then(function(b){ var old=img.src; img.src=URL.createObjectURL(b); img.hidden=false; if(old&&old.indexOf('blob:')===0) URL.revokeObjectURL(old) },
+          function(e){ rpreview=false; $('rerr').textContent=e.message||TX.bad; $('rerr').hidden=false; drawRemote() })
+    .then(function(){ shotBusy=false; setTimeout(shotLoop,1200) });
+}
+function rsend(act,x,y){
+  var last=rq[rq.length-1];
+  if((act==='move'||act==='scroll'||act==='laser')&&last&&last.act===act){ last.x+=x||0; last.y+=y||0 } else rq.push({act:act,x:x||0,y:y||0});
+  rpump();
+}
+function rpump(){
+  if(rbusy||!rq.length) return; rbusy=true;
+  var c=rq.shift(); c.x=Math.round(c.x); c.y=Math.round(c.y);
+  fetch(base+'/remote',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(c)})
+    .then(function(r){ return r.ok ? '' : r.text() }, function(){ return TX.lost })
+    .then(function(msg){ if(msg) rq=[]; $('rerr').textContent=msg; $('rerr').hidden=!msg; rbusy=false; rpump() });
+}
+function drawRemote(){
+  $('t-remote').textContent=TX.remote;
+  var tabs=$('rtabs'); tabs.textContent='';
+  ['slides','media','pointer','laser','system'].forEach(function(k){
+    var b=el('button',null,TX.tabs[k]); b.type='button'; b.setAttribute('aria-pressed', rtab===k);
+    b.onclick=function(){ rtab=k; try { localStorage.setItem('dbd-rtab',k) } catch (e) {} drawRemote() };
+    tabs.appendChild(b);
+  });
+  var body=$('rbody'); body.textContent='';
+  function row(cls, keys){
+    var g=el('div','rgrid '+cls);
+    keys.forEach(function(k){ var b=el('button','rk'+(k[1]?' '+k[1]:''),TX.r[k[0]]);
+      if(k[0]==='prev'||k[0]==='next') b.insertAdjacentHTML('afterbegin','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="'+(k[0]==='prev'?'M15 5l-7 7 7 7':'M9 5l7 7-7 7')+'"/></svg>'); b.type='button'; b.setAttribute('data-rk',k[0]); if(k[2]) b.setAttribute('data-rep','1'); g.appendChild(b) });
+    body.appendChild(g);
+  }
+  if(rtab==='slides'){
+    var img=el('img','rshot'); img.id='rshot'; img.hidden=true; img.alt=''; body.appendChild(img);
+    row('two',[['prev','huge'+(rpreview?' low':'')],['next','huge go'+(rpreview?' low':'')]]);
+    row('four',[['up','',1],['down','',1],['first'],['last']]);
+    row('three',[['start'],['black'],['stop']]);
+    var pv=el('button','btn',rpreview?TX.previewOff:TX.preview); pv.type='button';
+    pv.onclick=function(){ rpreview=!rpreview; try { localStorage.setItem('dbd-rpreview', rpreview?'1':'0') } catch (e) {} drawRemote() };
+    body.appendChild(pv);
+    shotLoop();
+  } else if(rtab==='laser'){
+    var lp=el('div','pad laser',TX.laser); body.appendChild(lp); laserPad(lp);
+  } else if(rtab==='system'){
+    row('three',[['lock'],['screen_off'],['sleep','warn']]);
+    body.appendChild(el('p',null,TX.sysHint));
+  } else if(rtab==='media'){
+    row('three',[['track_prev'],['play','go'],['track_next']]);
+    row('three',[['vol_down','',1],['mute'],['vol_up','',1]]);
+    row('',[['space']]);
+  } else {
+    var pad=el('div','pad',TX.pad); body.appendChild(pad); touchpad(pad);
+    row('even',[['click'],['rclick']]);
+  }
+}
+(function(){
+  var held=null, timer=null, body=$('rbody');
+  function stop(){ clearTimeout(timer); clearInterval(timer); timer=null; if(held) held.classList.remove('on'); held=null }
+  body.addEventListener('pointerdown', function(e){
+    var b=e.target.closest('[data-rk]'); if(!b||e.button>0) return;
+    e.preventDefault(); stop();
+    // Sleep cuts the computer off, so it takes a second press.
+    if(b.getAttribute('data-rk')==='sleep'&&!b.hasAttribute('data-armed')){
+      var old=b.textContent; b.setAttribute('data-armed','1'); b.textContent=TX.sure;
+      setTimeout(function(){ b.removeAttribute('data-armed'); b.textContent=old },3000); return;
+    }
+    held=b; b.classList.add('on'); rsend(b.getAttribute('data-rk'));
+    if(b.hasAttribute('data-rep')) timer=setTimeout(function(){ timer=setInterval(function(){ rsend(b.getAttribute('data-rk')) },110) },380);
+  });
+  ['pointerup','pointercancel','pointerleave'].forEach(function(n){ body.addEventListener(n, stop) });
+  body.addEventListener('click', function(e){ var b=e.target.closest('[data-rk]'); if(b&&e.detail===0) rsend(b.getAttribute('data-rk')) });
+})();
+function laserPad(pad){
+  var last=null;
+  pad.addEventListener('pointerdown', function(e){ e.preventDefault(); pad.setPointerCapture(e.pointerId); last={x:e.clientX,y:e.clientY,id:e.pointerId}; pad.classList.add('on'); rsend('laser',0,0) });
+  pad.addEventListener('pointermove', function(e){ if(!last||e.pointerId!==last.id) return; var dx=e.clientX-last.x, dy=e.clientY-last.y; last.x=e.clientX; last.y=e.clientY; rsend('laser',dx*2.2,dy*2.2) });
+  function up(e){ if(!last||e.pointerId!==last.id) return; last=null; pad.classList.remove('on'); rsend('laser_off') }
+  pad.addEventListener('pointerup', up); pad.addEventListener('pointercancel', up);
+}
+function touchpad(pad){
+  var pts={}, start=0, moved=0, two=false, acc=0;
+  function n(){ return Object.keys(pts).length }
+  function avgY(){ var s=0,c=0; for(var k in pts){ s+=pts[k].y; c++ } return c?s/c:0 }
+  pad.addEventListener('pointerdown', function(e){
+    e.preventDefault(); pad.setPointerCapture(e.pointerId); pts[e.pointerId]={x:e.clientX,y:e.clientY};
+    if(n()===1){ start=Date.now(); moved=0; two=false } else { two=true; acc=0 }
+    pad.classList.add('on');
+  });
+  pad.addEventListener('pointermove', function(e){
+    var p=pts[e.pointerId]; if(!p) return;
+    var dx=e.clientX-p.x, dy=e.clientY-p.y;
+    if(n()>=2){ var before=avgY(); p.x=e.clientX; p.y=e.clientY; acc+=avgY()-before; var st=(acc/22)|0; if(st){ acc-=st*22; rsend('scroll',0,-st) } return }
+    p.x=e.clientX; p.y=e.clientY; moved+=Math.abs(dx)+Math.abs(dy);
+    var g=1.4+Math.min(Math.sqrt(dx*dx+dy*dy)/12,2.2); rsend('move',dx*g,dy*g);
+  });
+  function up(e){
+    if(!pts[e.pointerId]) return; delete pts[e.pointerId]; if(n()) return;
+    pad.classList.remove('on');
+    if(e.type==='pointerup'&&!two&&moved<10&&Date.now()-start<300) rsend('click');
+  }
+  pad.addEventListener('pointerup', up); pad.addEventListener('pointercancel', up);
+}
+
 function refresh(){
-  fetch(base+'/state').then(function(r){return r.json()}).then(function(s){ drawDevices(s); drawRelays(s); drawInbox(s); drawBoard(s) }).catch(function(){});
+  fetch(base+'/state').then(function(r){return r.json()}).then(function(s){
+    var on=!!s.host.remote, was=$('remote').hidden; $('remote').hidden=!on; if(on&&was) drawRemote();
+    $('photo-pick').hidden=!mobile;
+    drawDevices(s); drawRelays(s); drawInbox(s); drawBoard(s) }).catch(function(){});
 }
 refresh(); setInterval(refresh, 2500);
 document.addEventListener('visibilitychange', function(){ if(!document.hidden) refresh() });

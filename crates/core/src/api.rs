@@ -105,7 +105,7 @@ impl Core {
 
         json!({
             "me": { "id": self.id, "name": cfg.name, "kind": crate::model::device_kind(), "port": self.port, "config_port": cfg.port,
-                    "ip": rt.net.as_ref().map(|n| n.local_ip.to_string()) },
+                    "ip": rt.net.as_ref().map(|n| n.local_ip.to_string()), "remote": crate::remote::supported(), "clip": self.has_clipboard() },
             "network": rt.net.as_ref().map(|n| json!({
                 "id": n.id, "saved": saved.is_some(), "name": saved.map(|s| s.name.clone()),
                 "mode": saved.and_then(|s| s.accept_mode.clone()),
@@ -123,7 +123,7 @@ impl Core {
             "inbox": inbox,
             "board": self.board_view(&cfg, &rt),
             "settings": { "accept_mode": cfg.accept_mode, "auto_max": cfg.auto_max, "inbox_dir": cfg.inbox_dir, "keep_dir": cfg.keep_dir,
-                          "board_dir": cfg.board_dir, "always_on": cfg.always_on, "guest_port": cfg.guest_port, "lang": cfg.lang },
+                          "board_dir": cfg.board_dir, "always_on": cfg.always_on, "remote_on": cfg.remote_on, "guest_port": cfg.guest_port, "lang": cfg.lang },
             "pairing_left": rt.pairing_until.map(|t| t.saturating_duration_since(Instant::now()).as_secs()).unwrap_or(0),
             "guest": rt.guest.as_ref().map(|g| json!({
                 "url": g.url, "qr": g.qr,
@@ -205,6 +205,10 @@ impl Core {
                 // 0 lets the system pick a free port each time the guest link is switched on.
                 let p = args.get("port").and_then(Value::as_u64).and_then(|p| u16::try_from(p).ok()).ok_or_else(|| anyhow!(tr!("پورت نامعتبر است", "Not a valid port")))?;
                 self.edit(|c| c.guest_port = p);
+            }
+            "set_remote_on" => {
+                let on = flag(&args, "on");
+                self.edit(|c| c.remote_on = on);
             }
             "set_always_on" => {
                 let on = flag(&args, "on");
@@ -388,6 +392,16 @@ impl Core {
                 }
                 open_in_os(Path::new(&url))?;
             }
+
+            // ---- remote control of another device
+            "remote" => {
+                let num = |k: &str| args.get(k).and_then(Value::as_i64).unwrap_or(0).clamp(-10_000, 10_000) as i32;
+                let cmd = crate::proto::RemoteCmd { act: text(&args, "act")?, x: num("x"), y: num("y") };
+                self.remote_send(&text(&args, "peer")?, cmd).await?;
+            }
+            "remote_shot" => return self.shot_take(&text(&args, "peer")?).await,
+            "clip_push" => self.clip_push(&text(&args, "peer")?, args.get("text").and_then(Value::as_str).map(str::to_string)).await?,
+            "clip_pull" => return Ok(json!({ "text": self.clip_pull(&text(&args, "peer")?).await? })),
 
             // ---- browser guest
             "guest_start" => self.guest_start().await?,

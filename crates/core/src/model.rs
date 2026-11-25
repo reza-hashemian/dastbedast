@@ -118,6 +118,8 @@ pub struct Config {
     /// This device fetches everything put on the shared board, so the others can get it
     /// from here while the device that shared it is away.
     pub always_on: bool,
+    /// Paired devices may use this one's keyboard and pointer as a remote control.
+    pub remote_on: bool,
     pub networks: Vec<Network>,
     pub peers: Vec<Peer>,
     pub inbox: Vec<InboxItem>,
@@ -140,6 +142,7 @@ impl Default for Config {
             accept_mode: "ask".into(),
             auto_max: 5 << 30,
             always_on: false,
+            remote_on: true,
             networks: vec![],
             peers: vec![],
             inbox: vec![],

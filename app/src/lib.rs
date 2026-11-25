@@ -1,6 +1,8 @@
 //! The shell around the shared UI, on desktop and on Android. Everything is forwarded to the core.
 
-use dbd_core::{Core, Options};
+use std::sync::Arc;
+
+use dbd_core::{Clipboard, Core, Options};
 use serde_json::{json, Value};
 use tauri::{Emitter, Manager};
 use tokio::sync::broadcast::error::RecvError;
@@ -94,14 +96,75 @@ fn start_options(app: &tauri::App) -> (std::path::PathBuf, Options) {
     }
 }
 
+/// The system clipboard, through the shell's plugin, which reaches it on desktops and phones alike.
+struct ShellClipboard(tauri::AppHandle);
+
+impl Clipboard for ShellClipboard {
+    fn get(&self) -> Option<String> {
+        use tauri_plugin_clipboard_manager::ClipboardExt;
+        self.0.clipboard().read_text().ok()
+    }
+    fn set(&self, text: &str) -> bool {
+        use tauri_plugin_clipboard_manager::ClipboardExt;
+        self.0.clipboard().write_text(text.to_string()).is_ok()
+    }
+}
+
+/// The laser pointer of the remote: a red dot in a see-through window above everything,
+/// which the mouse passes through. It covers the screen the mouse pointer is on.
+#[cfg(desktop)]
+fn laser(app: &tauri::AppHandle, ev: &Value) {
+    let on = ev["on"].as_bool().unwrap_or(false);
+    let win = match app.get_webview_window("laser") {
+        Some(w) => w,
+        None if !on => return,
+        None => match tauri::WebviewWindowBuilder::new(app, "laser", tauri::WebviewUrl::App("laser.html".into()))
+            .title("DastBeDast")
+            .transparent(true)
+            .decorations(false)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .shadow(false)
+            .resizable(false)
+            .focused(false)
+            .visible(false)
+            .build()
+        {
+            Ok(w) => w,
+            Err(e) => return eprintln!("laser window: {e}"),
+        },
+    };
+    let shown = win.is_visible().unwrap_or(false);
+    if on && !shown {
+        let monitor = app
+            .cursor_position()
+            .ok()
+            .and_then(|p| app.monitor_from_point(p.x, p.y).ok().flatten())
+            .or_else(|| app.primary_monitor().ok().flatten());
+        if let Some(m) = monitor {
+            let _ = win.set_position(*m.position());
+            let _ = win.set_size(*m.size());
+        }
+        // Only a shown window can be made click-through: on Linux a hidden one has nothing to apply it to yet.
+        let _ = win.show();
+        let _ = win.set_ignore_cursor_events(true);
+        let _ = win.set_always_on_top(true);
+    } else if !on && shown {
+        let _ = win.hide();
+    }
+    let _ = app.emit("laser", ev);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .setup(|app| {
             let (dir, opts) = start_options(app);
             let core = tauri::async_runtime::block_on(Core::start(dir, opts))?;
+            core.set_clipboard(Arc::new(ShellClipboard(app.handle().clone())));
             let mut events = core.subscribe();
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
@@ -111,6 +174,11 @@ pub fn run() {
                         Err(RecvError::Lagged(_)) => json!({ "type": "changed" }),
                         Err(RecvError::Closed) => break,
                     };
+                    if ev["type"] == "laser" {
+                        #[cfg(desktop)]
+                        laser(&handle, &ev);
+                        continue;
+                    }
                     let _ = handle.emit("core", ev);
                 }
             });

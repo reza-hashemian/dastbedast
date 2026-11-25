@@ -47,6 +47,14 @@ pub enum Req {
     Offer { offer: Offer },
     /// "Send me the content of this board item."
     BoardGet { item: String },
+    /// "Let me control you": followed by [`RemoteCmd`]s for as long as the connection stays open.
+    Remote,
+    /// "Put this text on your clipboard."
+    Clip { text: String },
+    /// "Send me what is on your clipboard."
+    ClipGet,
+    /// "Send me a small picture of your screen."
+    Shot,
     Unpair,
 }
 
@@ -59,6 +67,9 @@ pub enum Resp {
     Err { msg: String },
     Accept { resume: Vec<u64> },
     Reject { reason: String },
+    Clip { text: String },
+    /// A JPEG, in base64.
+    Shot { jpeg: String },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -80,6 +91,17 @@ pub enum LinkMsg {
     Info { info: Info },
     /// The sender's whole shared board, and the items whose content it can hand out.
     Board { items: Vec<BoardItem>, have: Vec<String> },
+}
+
+/// One press on a remote control. `act` names a key or a pointer action; `x` and `y` are
+/// the pointer movement or the scroll amount. An `act` this device does not know is ignored.
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub struct RemoteCmd {
+    pub act: String,
+    #[serde(default)]
+    pub x: i32,
+    #[serde(default)]
+    pub y: i32,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

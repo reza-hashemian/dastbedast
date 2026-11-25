@@ -86,6 +86,8 @@ impl Core {
             .route("/g/:token/board/text", post(board_text))
             .route("/g/:token/board/up/:name", put(board_upload))
             .route("/g/:token/board/dl/:id", get(board_download))
+            .route("/g/:token/remote", post(remote))
+            .route("/g/:token/shot", get(shot))
             .layer(DefaultBodyLimit::disable())
             .with_state(self.clone());
         let (stop, stopped) = oneshot::channel::<()>();
@@ -236,7 +238,10 @@ async fn state(State(core): State<Core>, Path(token): Path<String>) -> Response 
         return not_found();
     }
     let board = board_json(&core);
-    let peers = core.cfg.lock().unwrap().peers.clone();
+    let (peers, remote_on) = {
+        let cfg = core.cfg.lock().unwrap();
+        (cfg.peers.clone(), cfg.remote_on && crate::remote::supported())
+    };
     let info = core.info();
     let rt = core.rt.lock().unwrap();
     let Some(g) = rt.guest.as_ref() else { return not_found() };
@@ -249,7 +254,7 @@ async fn state(State(core): State<Core>, Path(token): Path<String>) -> Response 
         .map(|t| json!({ "id": t.id, "name": t.name, "peer": name_of(&t.peer_id), "state": t.state, "done": t.done, "total": t.total, "error": t.error }))
         .collect();
     Json(json!({
-        "host": { "name": info.name, "kind": info.kind },
+        "host": { "name": info.name, "kind": info.kind, "remote": remote_on },
         "peers": peers.iter().map(|p| json!({ "id": p.id, "name": p.name, "kind": p.kind, "online": rt.links.contains_key(&p.id) })).collect::<Vec<_>>(),
         "inbox": shared_json(g),
         "board": board,
@@ -397,6 +402,27 @@ async fn board_list(State(core): State<Core>, Path(token): Path<String>) -> Resp
         return not_found();
     }
     Json(board_json(&core)).into_response()
+}
+
+/// The page used as a remote control of this device.
+async fn remote(State(core): State<Core>, Path(token): Path<String>, Json(cmd): Json<crate::proto::RemoteCmd>) -> Response {
+    if !core.guest_ok(&token) {
+        return not_found();
+    }
+    match core.remote_local(cmd) {
+        Ok(()) => StatusCode::NO_CONTENT.into_response(),
+        Err(e) => (StatusCode::FORBIDDEN, e.to_string()).into_response(),
+    }
+}
+
+async fn shot(State(core): State<Core>, Path(token): Path<String>) -> Response {
+    if !core.guest_ok(&token) {
+        return not_found();
+    }
+    match core.shot_local().await {
+        Ok(jpeg) => ([(header::CONTENT_TYPE, "image/jpeg"), (header::CACHE_CONTROL, "no-store")], jpeg).into_response(),
+        Err(e) => (StatusCode::FORBIDDEN, e.to_string()).into_response(),
+    }
 }
 
 async fn board_text(State(core): State<Core>, Path(token): Path<String>, text: String) -> Response {

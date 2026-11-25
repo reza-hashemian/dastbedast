@@ -1,6 +1,6 @@
 {
   "identifier": "default",
-  "description": "What the main window may ask the shell to do.",
-  "windows": ["main"],
+  "description": "What the windows may ask the shell to do. The laser window only listens.",
+  "windows": ["main", "laser"],
   "permissions": ["core:default", "dialog:allow-open"]
 }

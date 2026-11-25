@@ -11,6 +11,8 @@ mod i18n;
 pub mod model;
 mod netid;
 pub mod proto;
+mod remote;
+mod screen;
 mod tls;
 mod transfer;
 
@@ -134,6 +136,19 @@ pub struct Inner {
     wake: Notify,
     /// Fires when a link to any peer comes up.
     online: Notify,
+    /// Open remote-control connections to other devices, by peer id.
+    remote: tokio::sync::Mutex<HashMap<String, mpsc::UnboundedSender<proto::RemoteCmd>>>,
+    /// The system clipboard, as the shell offers it; a headless device has none.
+    clipboard: Mutex<Option<Arc<dyn Clipboard>>>,
+    /// When each device last looked at this screen, so the user is told without being flooded.
+    watched: Mutex<HashMap<String, Instant>>,
+}
+
+/// The system clipboard. The core cannot reach it on every platform by itself (a phone's is
+/// behind the app's own window), so the shell hands it over with [`Core::set_clipboard`].
+pub trait Clipboard: Send + Sync {
+    fn get(&self) -> Option<String>;
+    fn set(&self, text: &str) -> bool;
 }
 
 #[derive(Clone)]
@@ -219,6 +234,9 @@ impl Core {
             events,
             wake: Notify::new(),
             online: Notify::new(),
+            remote: Default::default(),
+            clipboard: Mutex::new(None),
+            watched: Mutex::new(HashMap::new()),
         }));
         core.rt.lock().unwrap().net = netid::detect();
         core.sweep_partials();
@@ -373,6 +391,30 @@ impl Core {
                     return write_msg(&mut stream, &deny).await;
                 }
                 self.board_serve(stream, pid, item).await?;
+            }
+            Req::Remote => {
+                if !paired {
+                    return write_msg(&mut stream, &deny).await;
+                }
+                self.remote_serve(stream, pid).await?;
+            }
+            Req::Clip { text } => {
+                if !paired {
+                    return write_msg(&mut stream, &deny).await;
+                }
+                self.clip_receive(stream, pid, text).await?;
+            }
+            Req::ClipGet => {
+                if !paired {
+                    return write_msg(&mut stream, &deny).await;
+                }
+                self.clip_give(stream, pid).await?;
+            }
+            Req::Shot => {
+                if !paired {
+                    return write_msg(&mut stream, &deny).await;
+                }
+                self.shot_give(stream, pid).await?;
             }
             Req::Unpair => self.peer_left(&pid),
         }

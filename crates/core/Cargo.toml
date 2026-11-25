@@ -1,6 +1,6 @@
 [package]
 name = "dbd-core"
-version = "0.3.4"
+version = "0.4.0"
 edition = "2021"
 
 [dependencies]
@@ -20,3 +20,23 @@ dirs = "5"
 socket2 = { version = "0.5", features = ["all"] }
 hex = "0.4"
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+
+[features]
+# Lets paired phones press keys on this computer (slides, music, the pointer).
+# On Linux it links libxkbcommon, so the headless daemon and the tests leave it out.
+remote = ["dep:enigo", "dep:jpeg-encoder", "dep:base64", "dep:x11rb", "dep:windows-sys", "dep:core-graphics"]
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+enigo = { version = "0.6", optional = true }
+jpeg-encoder = { version = "0.7", optional = true }
+base64 = { version = "0.22", optional = true }
+
+# Taking a small picture of the screen, for the remote's preview.
+[target.'cfg(all(unix, not(target_os = "macos"), not(target_os = "android")))'.dependencies]
+x11rb = { version = "0.13", optional = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", optional = true, features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_UI_WindowsAndMessaging", "Win32_System_Power", "Win32_System_Shutdown"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-graphics = { version = "0.25", optional = true }

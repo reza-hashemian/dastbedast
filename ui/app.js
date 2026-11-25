@@ -76,6 +76,54 @@
     take_back: ['پس بگیر', 'Take back'],
     phone_reset: ['لینک جدید', 'New link'],
     phone_starting: ['در حال روشن‌کردن…', 'Turning on…'],
+    remote_btn: ['کنترل', 'Remote'],
+    remote_title: ['کنترل «{0}»', 'Control “{0}”'],
+    remote_away: ['این دستگاه الان وصل نیست', 'This device is not connected right now'],
+    rt_slides: ['ارائه', 'Slides'],
+    rt_media: ['موسیقی', 'Music'],
+    rt_pointer: ['ماوس', 'Pointer'],
+    rt_laser: ['لیزر', 'Laser'],
+    rt_system: ['سیستم', 'System'],
+    r_laser: ['انگشتت را روی این صفحه نگه دار و گوشی را به سمت پرده بچرخان تا نقطهٔ قرمز روی آن دستگاه حرکت کند. کشیدن انگشت هم نقطه را جابه‌جا می‌کند.',
+      'Hold your finger here and turn the phone towards the screen to move the red dot on that device. Dragging your finger moves it too.'],
+    r_laser_drag: ['انگشتت را روی این صفحه بکش تا نقطهٔ قرمز روی آن دستگاه حرکت کند.', 'Drag your finger here to move the red dot on that device.'],
+    r_lock: ['قفل صفحه', 'Lock'],
+    r_screen_off: ['خاموشی نمایشگر', 'Screen off'],
+    r_sleep: ['خواب', 'Sleep'],
+    r_sys_hint: ['نمایشگر با حرکت ماوس یا زدن یک کلید دوباره روشن می‌شود. در حالت خواب، ارتباط با آن دستگاه قطع می‌شود.',
+      'The screen comes back with a mouse movement or a key. While asleep, the device is out of reach.'],
+    r_preview: ['نمایش صفحهٔ آن دستگاه', 'Show its screen'],
+    r_preview_off: ['پنهان کردن صفحه', 'Hide its screen'],
+    clip: ['کلیپ‌بورد', 'Clipboard'],
+    clip_push: ['فرستادن کلیپ‌بوردِ اینجا', 'Send this clipboard'],
+    clip_pull: ['گرفتن کلیپ‌بوردِ آنجا', 'Take its clipboard'],
+    clip_pushed: ['کلیپ‌بورد فرستاده شد', 'Clipboard sent'],
+    clip_pulled: ['کلیپ‌بورد آن دستگاه اینجا آمد', 'Its clipboard is now here'],
+    clip_hint: ['متنی که کپی کرده‌ای را به آن دستگاه بفرست تا آنجا Paste کنی، یا برعکس.', 'Send what you copied to that device to paste it there, or the other way round.'],
+    photo: ['عکس', 'Photo'],
+    photo_sent: ['عکس فرستاده شد', 'Photo sent'],
+    r_prev: ['قبلی', 'Previous'],
+    r_next: ['بعدی', 'Next'],
+    r_start: ['شروع ارائه', 'Start show'],
+    r_stop: ['پایان ارائه', 'End show'],
+    r_black: ['صفحهٔ سیاه', 'Black screen'],
+    r_up: ['بالا', 'Up'],
+    r_down: ['پایین', 'Down'],
+    r_first: ['اولین', 'First'],
+    r_last: ['آخرین', 'Last'],
+    r_play: ['پخش / مکث', 'Play / pause'],
+    r_tnext: ['بعدی', 'Next'],
+    r_tprev: ['قبلی', 'Previous'],
+    r_volup: ['بلندتر', 'Louder'],
+    r_voldown: ['آهسته‌تر', 'Quieter'],
+    r_mute: ['بی‌صدا', 'Mute'],
+    r_space: ['فاصله', 'Space'],
+    r_space_hint: ['پخش و مکث در یوتیوب و پخش‌کننده‌های ویدیو', 'Play and pause in YouTube and video players'],
+    r_click: ['کلیک', 'Click'],
+    r_rclick: ['کلیک راست', 'Right click'],
+    r_pad: ['انگشت بکش تا نشانگر حرکت کند. یک ضربه کلیک است و کشیدن با دو انگشت اسکرول.', 'Drag to move the pointer. A tap clicks; drag with two fingers to scroll.'],
+    r_hint_slides: ['پنجرهٔ اسلاید یا PDF باید روی آن دستگاه جلو باشد.', 'The slides or PDF window must be in front on that device.'],
+    r_hint_keys: ['دکمه‌های صدای گوشی هم کار می‌کنند: در ارائه اسلاید را جابه‌جا می‌کنند و در موسیقی صدا را.', 'The phone’s volume buttons work too: they move the slides, or change the volume on the Music tab.'],
     paths_hint: ['در حالت مرورگر پنجرهٔ انتخاب فایل در دسترس نیست. مسیر کامل هر فایل یا پوشه را در یک خط بنویس.',
       'The file picker is not available in browser mode. Write the full path of each file or folder on its own line.'],
     paths_files: ['مسیر فایل‌ها', 'File paths'],
@@ -192,6 +240,9 @@
     set_max: ['سقف پذیرش بدون تأیید، به گیگابایت (۰ یعنی بدون سقف)', 'Largest transfer accepted without asking, in GB (0 = no limit)'],
     set_port: ['پورت (بعد از اجرای دوبارهٔ برنامه اعمال می‌شود)', 'Port (applies after the app restarts)'],
     set_always: ['این دستگاه همیشه روشن است', 'This device is always on'],
+    set_remote: ['دستگاه‌های جفت‌شده بتوانند این دستگاه را از راه دور کنترل کنند', 'Paired devices may use this device as a remote'],
+    set_remote_hint: ['برای ورق‌زدن اسلاید، موسیقی، ماوس و لیزر، دیدن صفحه، گرفتن کلیپ‌بورد و قفل یا خواب کردن این دستگاه از روی گوشی. فقط چند کلید مشخص زده می‌شود؛ تایپ ممکن نیست.',
+      'To turn slides, play music, move the pointer and the laser, see the screen, take the clipboard, and lock or sleep this device from a phone. Only a fixed set of keys can be pressed; nothing can be typed.'],
     set_always_hint: ['هر چه روی میز مشترک گذاشته شود خودکار اینجا هم ذخیره می‌شود، تا وقتی دستگاهِ صاحبش خاموش است بقیه از اینجا بگیرند.',
       'Everything put on the shared board is also stored here automatically, so the others can get it from here while its owner is off.'],
     cur_addr: ['آدرس فعلی:', 'Current address:'],
@@ -341,6 +392,8 @@
         '<b>' + esc(p.name) + '</b><span class="st"><span class="dot' + (p.online ? ' on' : '') + '"></span><span>' + st + '</span></span></button>' +
         '<div class="dev-acts"><button type="button" data-act="send-files" data-id="' + id + '"' + dis + '>' + esc(t('file')) + '</button>' +
         '<button type="button" data-act="send-folder" data-id="' + id + '"' + dis + '>' + esc(t('folder')) + '</button>' +
+        (p.kind === 'android' ? '' : '<button type="button" data-act="remote" data-id="' + id + '"' + dis + '>' + esc(t('remote_btn')) + '</button>') +
+        (A && A.takePhoto ? '<button type="button" data-act="photo" data-id="' + id + '"' + dis + '>' + esc(t('photo')) + '</button>' : '') +
         '<button type="button" class="more" data-act="peer" data-id="' + id + '" aria-label="' + esc(t('settings_of', p.name)) + '">⋯</button></div></div>';
     }).join('');
   }
@@ -495,6 +548,7 @@
     $('peer-body').innerHTML = '<div class="dlg-head"><h2>' + esc(p.name) + '</h2>' + xBtn() + '</div>' +
       '<p class="hint">' + kind(p.kind) + ' · ' + (p.online ? t('connected_from', ltr(p.addr)) : esc(t('unreachable'))) + ' · ' + esc(t('ident')) + ' ' + ltr(p.id.slice(0, 12)) + '</p>' +
       '<h3>' + esc(t('accept_from_peer')) + '</h3>' + modeSeg('peer-mode', p.id, p.mode) +
+      (S.me.clip && p.online ? '<h3>' + esc(t('clip')) + '</h3><div class="line">' + clipBtns(p.id) + '</div>' : '') +
       '<h3>' + esc(t('addresses')) + '</h3><div class="rows">' + (p.addrs.length ? p.addrs.map(function (a) {
         return '<div class="row"><span class="nm">' + ltr(a.host + ':' + a.port) + '</span><span class="meta">' + esc(a.net ? t('in_net', netName(a.net)) : t('static_any')) + '</span>' +
           '<span class="act"><button type="button" class="btn" data-act="addr-del" data-id="' + esc(p.id) + '" data-host="' + esc(a.host) + '" data-port="' + esc(a.port) + '">' + esc(t('del')) + '</button></span></div>';
@@ -535,6 +589,8 @@
       field('set_port', 'set-port', S.me.config_port, 'ltr', ' inputmode="numeric"') +
       '<label class="check"><input type="checkbox" id="set-always"' + (s.always_on ? ' checked' : '') + '> ' + esc(t('set_always')) + '</label>' +
       '<p class="hint">' + esc(t('set_always_hint')) + '</p>' +
+      (S.me.remote ? '<label class="check"><input type="checkbox" id="set-remote"' + (s.remote_on ? ' checked' : '') + '> ' + esc(t('set_remote')) + '</label>' +
+        '<p class="hint">' + esc(t('set_remote_hint')) + '</p>' : '') +
       '<p class="hint">' + esc(t('cur_addr')) + ' ' + ltr((S.me.ip || '?') + ':' + S.me.port) + ' · ' + esc(t('ident')) + ' ' + ltr(S.me.id.slice(0, 12)) + '</p>' +
       '<div class="line end"><button type="button" class="btn go" data-act="settings-save">' + esc(t('save')) + '</button></div>';
     $('dlg-settings').showModal();
@@ -583,9 +639,247 @@
     document.body.classList.toggle('phone', S.me.kind === 'android');
     var want = S.settings.lang === 'en' ? 'en' : 'fa';
     if (want !== lang || !langApplied) { lang = want; langApplied = true; applyLang(); }
-    renderBar(); renderNets(); renderDevs(); renderBoard(); renderTransfers(); renderInbox(); renderPair(); renderNew(); renderPhone(); renderPeer(false); renderShare(false);
+    renderBar(); renderNets(); renderDevs(); renderBoard(); renderTransfers(); renderInbox(); renderPair(); renderNew(); renderPhone(); renderPeer(false); renderShare(false); renderRemote();
   }
   function reload() { return call('snapshot').then(function (s) { S = s; render(); }); }
+
+
+  // ------------------------------------------------------------------ remote control of another device
+  // Presses go out one at a time and in order; pointer movement that piles up while one is on its way is merged.
+  var R = { peer: null, tab: 'slides', queue: [], busy: false };
+  try { R.tab = localStorage.getItem('dbd-remote-tab') || 'slides'; } catch (e) {}
+  var RI = {
+    prev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+    next: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
+    up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 15l7-7 7 7"/></svg>',
+    down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l7 7 7-7"/></svg>',
+    play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 5v14l9-7zM15 5h2v14h-2zM19 5h2v14h-2z"/></svg>',
+    tnext: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 5v14l10-7zM17 5h2v14h-2z"/></svg>',
+    tprev: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 5v14L9 12zM5 5h2v14H5z"/></svg>',
+    volup: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></svg>',
+    voldown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9a4 4 0 0 1 0 6"/></svg>',
+    mute: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9l5 6M21 9l-5 6"/></svg>'
+  };
+
+  function clipBtns(id) {
+    return '<button type="button" class="btn" data-act="clip-push" data-id="' + esc(id) + '">' + esc(t('clip_push')) + '</button>' +
+      '<button type="button" class="btn" data-act="clip-pull" data-id="' + esc(id) + '">' + esc(t('clip_pull')) + '</button>';
+  }
+  function rsend(act, x, y) {
+    var last = R.queue[R.queue.length - 1];
+    if ((act === 'move' || act === 'scroll' || act === 'laser') && last && last.act === act) { last.x += x || 0; last.y += y || 0; }
+    else R.queue.push({ act: act, x: x || 0, y: y || 0 });
+    rpump();
+  }
+  function rpump() {
+    if (R.busy || !R.queue.length || !R.peer) return;
+    R.busy = true;
+    var c = R.queue.shift();
+    call('remote', { peer: R.peer, act: c.act, x: Math.round(c.x), y: Math.round(c.y) })
+      .then(function () { rstatus(''); }, function (e) { R.queue = []; rstatus(e && e.message ? e.message : String(e)); })
+      .then(function () { R.busy = false; rpump(); });
+  }
+  function rstatus(msg) { var el = $('remote-err'); if (el) { el.textContent = msg; el.hidden = !msg; } }
+
+  function openRemote(id) {
+    R.peer = id; R.queue = [];
+    drawRemote();
+    $('dlg-remote').showModal();
+    // While the remote is open the phone stays awake and its volume buttons belong to the remote.
+    if (A && A.remoteMode) A.remoteMode(true);
+  }
+  $('dlg-remote').addEventListener('close', function () {
+    if (R.laser) { R.laser = false; rsend('laser_off'); }
+    R.peer = null; R.queue = [];
+    if (A && A.remoteMode) A.remoteMode(false);
+  });
+  try { R.preview = localStorage.getItem('dbd-remote-preview') === '1'; } catch (e) {}
+
+  // A picture of the other screen, renewed while it is shown, one at a time.
+  function shotLoop() {
+    if (R.shotBusy || !R.preview || !R.peer || R.tab !== 'slides' || !$('rshot')) return;
+    R.shotBusy = true;
+    var peer = R.peer;
+    call('remote_shot', { peer: peer }).then(function (r) {
+      var img = $('rshot');
+      if (img && R.peer === peer) { img.src = 'data:image/jpeg;base64,' + r.jpeg; img.hidden = false; }
+    }, function (e) {
+      R.preview = false; rstatus(e && e.message ? e.message : String(e));
+      var b = $('rprev'); if (b) b.textContent = t('r_preview');
+    }).then(function () { R.shotBusy = false; setTimeout(shotLoop, 1200); });
+  }
+
+  function renderRemote() {
+    if (!$('dlg-remote').open) return;
+    var p = S.peers.filter(function (x) { return x.id === R.peer; })[0];
+    if (!p) return $('dlg-remote').close();
+    var st = $('remote-st');
+    if (st) st.innerHTML = '<span class="dot' + (p.online ? ' on' : '') + '"></span>' + esc(p.online ? t('connected') : t('remote_away'));
+  }
+
+  function drawRemote() {
+    var p = S.peers.filter(function (x) { return x.id === R.peer; })[0];
+    if (!p) return;
+    function k(act, icn, label, cls, rep) {
+      return '<button type="button" class="rk' + (cls ? ' ' + cls : '') + '" data-rk="' + act + '"' + (rep ? ' data-rep="1"' : '') + '>' +
+        (icn ? RI[icn] : '') + '<span dir="auto">' + esc(t(label)) + '</span></button>';
+    }
+    var tabs = ['slides', 'media', 'pointer', 'laser', 'system'];
+    if (tabs.indexOf(R.tab) < 0) R.tab = 'slides';
+    var body, big = R.preview ? 'huge low' : 'huge';
+    if (R.tab === 'slides') {
+      body = '<img class="rshot" id="rshot" alt="" hidden>' +
+        '<div class="rgrid two">' + k('prev', 'prev', 'r_prev', big) + k('next', 'next', 'r_next', big + ' go') + '</div>' +
+        '<div class="rgrid four">' + k('up', 'up', 'r_up', '', 1) + k('down', 'down', 'r_down', '', 1) + k('first', '', 'r_first') + k('last', '', 'r_last') + '</div>' +
+        '<div class="rgrid three">' + k('start', '', 'r_start') + k('black', '', 'r_black') + k('stop', '', 'r_stop') + '</div>' +
+        '<div class="line"><button type="button" class="btn" id="rprev" data-act="remote-preview">' + esc(t(R.preview ? 'r_preview_off' : 'r_preview')) + '</button></div>' +
+        '<p class="hint">' + esc(t('r_hint_slides')) + '</p>';
+    } else if (R.tab === 'media') {
+      body = '<div class="rgrid three">' + k('track_prev', 'tprev', 'r_tprev', 'tall') + k('play', 'play', 'r_play', 'tall go') + k('track_next', 'tnext', 'r_tnext', 'tall') + '</div>' +
+        '<div class="rgrid three">' + k('vol_down', 'voldown', 'r_voldown', 'tall', 1) + k('mute', 'mute', 'r_mute', 'tall') + k('vol_up', 'volup', 'r_volup', 'tall', 1) + '</div>' +
+        '<div class="rgrid one">' + k('space', '', 'r_space') + '</div><p class="hint">' + esc(t('r_space_hint')) + '</p>';
+    } else if (R.tab === 'pointer') {
+      body = '<div class="pad" id="rpad"><span>' + esc(t('r_pad')) + '</span></div>' +
+        '<div class="rgrid two even">' + k('click', '', 'r_click') + k('rclick', '', 'r_rclick') + '</div>';
+    } else if (R.tab === 'laser') {
+      body = '<div class="pad laser" id="rlaser"><span>' + esc(t(window.DeviceMotionEvent && A ? 'r_laser' : 'r_laser_drag')) + '</span></div>';
+    } else {
+      body = '<div class="rgrid three">' + k('lock', '', 'r_lock', 'tall') + k('screen_off', '', 'r_screen_off', 'tall') + k('sleep', '', 'r_sleep', 'tall warn') + '</div>' +
+        '<p class="hint">' + esc(t('r_sys_hint')) + '</p>' +
+        (S.me.clip ? '<h3>' + esc(t('clip')) + '</h3><div class="line">' + clipBtns(p.id) + '</div><p class="hint">' + esc(t('clip_hint')) + '</p>' : '');
+    }
+    $('remote-body').innerHTML = '<div class="dlg-head"><h2>' + esc(t('remote_title', p.name)) + '</h2>' + xBtn() + '</div>' +
+      '<p class="hint rst" id="remote-st"></p>' +
+      '<div class="seg" role="group">' + tabs.map(function (x) {
+        return '<button type="button" data-act="remote-tab" data-tab="' + x + '" aria-pressed="' + (R.tab === x) + '">' + esc(t('rt_' + x)) + '</button>';
+      }).join('') + '</div>' + body +
+      '<p class="hint bad" id="remote-err" hidden></p>' +
+      (A && A.remoteMode ? '<p class="hint">' + esc(t('r_hint_keys')) + '</p>' : '');
+    renderRemote();
+    if ($('rpad')) touchpad($('rpad'));
+    if ($('rlaser')) laserPad($('rlaser'));
+    shotLoop();
+  }
+
+  // The laser: while a finger rests on the pad the dot shows; turning the phone or dragging moves it.
+  function laserPad(el) {
+    var last = null;
+    el.addEventListener('pointerdown', function (e) {
+      e.preventDefault(); el.setPointerCapture(e.pointerId);
+      last = { x: e.clientX, y: e.clientY, id: e.pointerId };
+      R.laser = true; el.classList.add('on');
+      rsend('laser', 0, 0);
+    });
+    el.addEventListener('pointermove', function (e) {
+      if (!last || e.pointerId !== last.id) return;
+      var dx = e.clientX - last.x, dy = e.clientY - last.y;
+      last.x = e.clientX; last.y = e.clientY;
+      rsend('laser', dx * 2.2, dy * 2.2);
+    });
+    function up(e) {
+      if (!last || e.pointerId !== last.id) return;
+      last = null; R.laser = false; el.classList.remove('on');
+      rsend('laser_off');
+    }
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+  }
+  // Turning the phone like a remote, top edge towards the screen: a turn to the side is a rotation around
+  // the axis through the screen (alpha), a tilt up or down one around the axis across it (beta).
+  var gyro = { x: 0, y: 0 };
+  window.addEventListener('devicemotion', function (e) {
+    var r = e.rotationRate;
+    if (!R.laser || !r || r.alpha == null) return;
+    var dt = e.interval > 1 ? e.interval / 1000 : (e.interval || 0.016);
+    gyro.x += -r.alpha * dt * 28; gyro.y += -r.beta * dt * 28;
+    if (Math.abs(gyro.x) >= 1 || Math.abs(gyro.y) >= 1) {
+      var x = Math.round(gyro.x), y = Math.round(gyro.y);
+      gyro.x -= x; gyro.y -= y;
+      rsend('laser', x, y);
+    }
+  });
+
+  // A key held down repeats, as on a keyboard: for scrolling and for the volume.
+  (function () {
+    var held = null, timer = null;
+    function stop() { clearTimeout(timer); clearInterval(timer); timer = null; if (held) held.classList.remove('on'); held = null; }
+    var body = $('remote-body');
+    body.addEventListener('pointerdown', function (e) {
+      var b = e.target.closest('[data-rk]');
+      if (!b || e.button > 0) return;
+      e.preventDefault();
+      stop();
+      // Sleep cuts the device off, so it takes a second press.
+      if (b.dataset.rk === 'sleep' && !b.dataset.armed) {
+        b.dataset.armed = '1';
+        var label = b.querySelector('span'), old = label.textContent;
+        label.textContent = t('sure');
+        setTimeout(function () { if (b.isConnected) { delete b.dataset.armed; label.textContent = old; } }, 3000);
+        return;
+      }
+      held = b; b.classList.add('on');
+      rsend(b.dataset.rk);
+      if (b.dataset.rep) timer = setTimeout(function () { timer = setInterval(function () { rsend(b.dataset.rk); }, 110); }, 380);
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (n) { body.addEventListener(n, stop); });
+    // Enter or Space on a focused key, for a keyboard user.
+    body.addEventListener('click', function (e) { var b = e.target.closest('[data-rk]'); if (b && e.detail === 0) rsend(b.dataset.rk); });
+  })();
+
+  function touchpad(el) {
+    var pts = {}, start = null, moved = 0, two = false, scrollAcc = 0;
+    function count() { return Object.keys(pts).length; }
+    function avgY() { var s = 0, n = 0; for (var k in pts) { s += pts[k].y; n++; } return n ? s / n : 0; }
+    el.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      el.setPointerCapture(e.pointerId);
+      pts[e.pointerId] = { x: e.clientX, y: e.clientY };
+      if (count() === 1) { start = Date.now(); moved = 0; two = false; }
+      else { two = true; scrollAcc = 0; }
+      el.classList.add('on');
+    });
+    el.addEventListener('pointermove', function (e) {
+      var p = pts[e.pointerId];
+      if (!p) return;
+      var dx = e.clientX - p.x, dy = e.clientY - p.y;
+      if (count() >= 2) {
+        var before = avgY();
+        p.x = e.clientX; p.y = e.clientY;
+        scrollAcc += avgY() - before;
+        // Fingers going up push the page up, as on a phone.
+        var steps = (scrollAcc / 22) | 0;
+        if (steps) { scrollAcc -= steps * 22; rsend('scroll', 0, -steps); }
+        return;
+      }
+      p.x = e.clientX; p.y = e.clientY;
+      moved += Math.abs(dx) + Math.abs(dy);
+      // Faster strokes travel further, so one swipe crosses a large screen.
+      var speed = Math.sqrt(dx * dx + dy * dy), gain = 1.4 + Math.min(speed / 12, 2.2);
+      rsend('move', dx * gain, dy * gain);
+    });
+    function up(e) {
+      if (!pts[e.pointerId]) return;
+      delete pts[e.pointerId];
+      if (count()) return;
+      el.classList.remove('on');
+      if (e.type === 'pointerup' && !two && moved < 10 && Date.now() - start < 300) rsend('click');
+    }
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+  }
+  // The phone's volume buttons, passed on by the Android shell while the remote is open.
+  // A photo taken with the phone's camera for one device, handed back by the Android shell.
+  window.dbdPhoto = function (peer, path) {
+    if (!peer || !path) return;
+    run(call('send', { peer: peer, paths: [path] }).then(function () { toast(t('photo_sent')); }));
+  };
+  window.dbdKey = function (key, repeat) {
+    if (!R.peer) return;
+    if (R.tab === 'media') return rsend(key === 'up' ? 'vol_up' : 'vol_down');
+    if (R.tab === 'pointer') return rsend('scroll', 0, key === 'up' ? -3 : 3);
+    if (R.tab !== 'slides') return;
+    if (!repeat) rsend(key === 'up' ? 'prev' : 'next');
+  };
 
   // ------------------------------------------------------------------ events from the core
   var pending = null;
@@ -775,6 +1069,16 @@
     'guest-stop': function () { if ($('dlg-phone').open) $('dlg-phone').close(); return call('guest_stop'); },
     'guest-share': function () { return pick(false).then(function (p) { if (p.length) return call('guest_share', { paths: p }); }); },
     'peer': function (d) { peerOpen = d.id; renderPeer(true); },
+    'remote': function (d) { openRemote(d.id); },
+    'remote-preview': function () {
+      R.preview = !R.preview;
+      try { localStorage.setItem('dbd-remote-preview', R.preview ? '1' : '0'); } catch (e) {}
+      drawRemote();
+    },
+    'clip-push': function (d) { return call('clip_push', { peer: d.id }).then(function () { toast(t('clip_pushed')); }); },
+    'clip-pull': function (d) { return call('clip_pull', { peer: d.id }).then(function () { toast(t('clip_pulled')); }); },
+    'photo': function (d) { A.takePhoto(d.id); },
+    'remote-tab': function (d) { R.tab = d.tab; try { localStorage.setItem('dbd-remote-tab', d.tab); } catch (e) {} drawRemote(); },
     'peer-mode': function (d) { return call('set_peer_mode', { id: d.id, mode: d.mode }).then(reload).then(function () { renderPeer(true); }); },
     'addr-add': function (d) {
       var host = $('pa-host').value.trim();
@@ -800,6 +1104,7 @@
         call('set_accept', { mode: S.settings.accept_mode, auto_max: Math.round(max * 1073741824) }),
         call('set_always_on', { on: $('set-always').checked })
       ];
+      if ($('set-remote')) jobs.push(call('set_remote_on', { on: $('set-remote').checked }));
       if (+$('set-port').value !== S.me.config_port) jobs.push(call('set_port', { port: +$('set-port').value }));
       return Promise.all(jobs).then(function () { $('dlg-settings').close(); toast(t('saved')); });
     }
